@@ -2,60 +2,26 @@ import { Composer } from 'grammy';
 
 import type { CustomContext } from '../types/context.js';
 import { fetchPortfolio, type Option } from '../services/freedom/api.js';
-
-function getMarketState(): 'pre' | 'open' | 'post' | 'closed' {
-  const now = new Date();
-  const h = now.getHours();
-  const m = now.getMinutes();
-  if (h < 10) return 'closed';
-  if (h < 15 || (h === 15 && m < 30)) return 'pre';
-  if (h < 22) return 'open';
-  return 'post';
-}
-
-function formatTimeLeft(startDate: Date, endDate: Date): string {
-  let diff = endDate.getTime() - startDate.getTime();
-  if (diff <= 0) return 'now';
-
-  const units = [
-    { label: 'y', ms: 1000 * 60 * 60 * 24 * 365 },
-    { label: 'm', ms: 1000 * 60 * 60 * 24 * 30 },
-    { label: 'd', ms: 1000 * 60 * 60 * 24 },
-    { label: 'h', ms: 1000 * 60 * 60 },
-    { label: 'm', ms: 1000 * 60 },
-  ];
-
-  const result: string[] = [];
-  let unitsUsed = 0;
-
-  for (const unit of units) {
-    if (unitsUsed >= 2) break;
-    const value = Math.floor(diff / unit.ms);
-    if (value > 0) {
-      result.push(`${value}${unit.label}`);
-      diff -= value * unit.ms;
-      unitsUsed++;
-    }
-  }
-
-  return result.length > 0 ? result.join(' ') : 'now';
-}
+import { TradenetWebSocket } from '../services/websocket.js';
+import { formatCurrency, formatPercentage, formatTimeLeft, getMarketState } from '../services/formatters.js';
 
 function processPosition(position: Option) {
   const profit = position.currentPrice - position.startPrice;
-
+  const percentage = position.startPrice !== 0 ? (profit / position.startPrice) * 100 : 0;
   const timeLeft = formatTimeLeft(position.startDate, position.endDate);
+
   return {
     state: profit > 0 ? 'profit' : profit < 0 ? 'loss' : 'zero',
     name: position.name,
-    change: profit.toFixed(2),
-    startPrice: position.startPrice.toFixed(2),
-    currentPrice: position.currentPrice.toFixed(2),
+    change: formatCurrency(profit),
+    percent: formatPercentage(percentage),
+    startPrice: position.startPrice.toFixed(0),
+    currentPrice: position.currentPrice.toFixed(0),
     startDate: position.startDate.toLocaleDateString(),
     endDate: position.endDate.toLocaleDateString(),
     timeLeft,
-    strike: position.strike.toFixed(2),
-    // strikeChange: position.strikeChange, FIXME: (${strikeChange})
+    strike: formatCurrency(position.strike),
+    usingMarketPrice: position.usingMarketPrice,
   };
 }
 
@@ -66,12 +32,23 @@ portfolioController.command('portfolio', async ctx => {
     return;
   }
 
-  const { error, ...portfolio } = await fetchPortfolio(ctx.dbEntities.user.login, ctx.dbEntities.user.password);
+  if (!ctx.dbEntities.user.apiKey || !ctx.dbEntities.user.secretKey) {
+    await ctx.text('start');
+    return;
+  }
+
+  const { error, ...portfolio } = await fetchPortfolio(
+    ctx.dbEntities.user.apiKey,
+    ctx.dbEntities.user.secretKey,
+    ctx.db,
+  );
 
   if (error) {
     await ctx.text('portfolio.error', { error });
     return;
   }
+
+  const dataWarning = TradenetWebSocket.isConnected() ? '' : ctx.i18n.t('portfolio.icon.data.warning');
 
   await ctx.text('portfolio.full', {
     market: ctx.i18n.t(`portfolio.icon.market.${getMarketState()}`),
@@ -89,12 +66,14 @@ portfolioController.command('portfolio', async ctx => {
         return ctx.i18n.t('portfolio.part.option', {
           ...processed,
           state: ctx.i18n.t(`portfolio.icon.state.${processed.state}`),
+          priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
         });
       })
       .join('\n\n'),
     total: ctx.i18n.t('portfolio.part.total', {
       state: ctx.i18n.t(`portfolio.icon.state.${portfolio.total >= 0 ? 'rising' : 'falling'}`),
-      total: portfolio.total.toFixed(2),
+      total: formatCurrency(portfolio.total),
+      dataWarning,
     }),
   });
 });

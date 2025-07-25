@@ -26,13 +26,15 @@
     "@grammyjs/i18n": "^0.5.1",
     "dotenv": "^16.0.1",
     "grammy": "^1.24.1",
-    "mongodb": "^4.9.1"
+    "mongodb": "^4.9.1",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@stylistic/eslint-plugin": "^2.3.0",
     "@tsconfig/recommended": "^1.0.7",
     "@types/node": "^20.14.10",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
     "eslint": "^8.57.0",

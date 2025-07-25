@@ -6,7 +6,7 @@ import { portfolioController } from '../controllers/portfolio.js';
 import { resolvePath } from '../helpers/resolve-path.js';
 import { createReplyWithTextFunc } from '../services/context.js';
 import { getUser } from '../services/user.js';
-import type { CustomContext } from '../types/context.js';
+import { TradenetWebSocket } from '../services/websocket.js';
 import type { Database } from '../types/database.js';
 import type { Bot } from '../types/telegram.js';
 import { initLocaleEngine } from './locale-engine.js';
@@ -31,14 +31,13 @@ function extendContext(bot: Bot, database: Database) {
   });
 }
 
-function setupPreControllers(_bot: Bot) {
-  // e.g. inline-mode controllers
-}
-
 function setupMiddlewares(bot: Bot, localeEngine: I18n) {
-  bot.use(session());
-  bot.use(localeEngine.middleware());
-  // eslint-disable-next-line github/no-then
+  bot.use(
+    session({
+      initial: () => ({}),
+    }),
+  );
+  bot.use(localeEngine);
   bot.catch(console.error);
 }
 
@@ -48,11 +47,21 @@ function setupControllers(bot: Bot) {
 }
 
 export async function startBot(database: Database) {
+  TradenetWebSocket.initialize(database);
+
+  const adminId = process.env.ADMIN_ID;
+  if (adminId) {
+    const adminUser = await getUser({ db: database, userId: Number(adminId) });
+    if (adminUser && adminUser.sid) {
+      await TradenetWebSocket.connect(adminUser.sid);
+    }
+  }
+
+  const bot: Bot = new TelegramBot(process.env.TOKEN);
+
   const localesPath = resolvePath(import.meta.url, '../locales');
   const i18n = initLocaleEngine(localesPath);
-  const bot = new TelegramBot<CustomContext>(process.env.TOKEN);
 
-  setupPreControllers(bot);
   extendContext(bot, database);
   setupMiddlewares(bot, i18n);
   setupControllers(bot);
