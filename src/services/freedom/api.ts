@@ -29,6 +29,55 @@ export type PortfolioResponse = {
   error: null | string;
 } & UserPortfolio;
 
+type OrderHistoryResponse = {
+  orders: {
+    order: Array<{
+      instr: string;
+      date: string;
+    }>;
+  };
+};
+
+async function fetchOrdersHistory(apiKey: string, secretKey: string): Promise<OrderHistoryResponse | null> {
+  try {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(23, 59, 59, 999);
+
+    const twoYearsAgo = new Date(tomorrow);
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    twoYearsAgo.setHours(0, 0, 0, 0);
+
+    const from = twoYearsAgo.toISOString();
+    const to = tomorrow.toISOString();
+    const cmd = 'getOrdersHistory';
+    const nonce = Date.now().toString();
+
+    const toSign = `apiKey=${apiKey}&cmd=${cmd}&nonce=${nonce}&params=from=${from}&to=${to}`;
+    const signature = createHmac('sha256', secretKey).update(toSign).digest('hex');
+
+    const body = `apiKey=${apiKey}&cmd=${cmd}&nonce=${nonce}&params[from]=${from}&params[to]=${to}`;
+
+    const res = await fetch(`https://tradernet.com/api/v2/cmd/${cmd}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-NtApi-PublicKey': apiKey,
+        'X-NtApi-Sig': signature,
+      },
+      body,
+    });
+
+    if (res.ok) {
+      return await res.json();
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching order history:', error);
+    return null;
+  }
+}
+
 export async function fetchPortfolio(
   apiKey: string,
   secretKey: string,
@@ -74,14 +123,24 @@ export async function fetchPortfolio(
     const tickerNames = response.result.ps.pos.map(pos => pos.i);
     const dbPrices = await getPrices(database, tickerNames);
 
+    const orderHistory = await fetchOrdersHistory(apiKey, secretKey);
+    const orderDates = new Map<string, Date>();
+
+    if (orderHistory?.orders?.order) {
+      for (const order of orderHistory.orders.order) {
+        orderDates.set(order.instr, new Date(order.date));
+      }
+    }
+
     const positions = response.result.ps.pos.map(pos => {
       const dbPrice = dbPrices.get(pos.i);
       const currentPrice = dbPrice ?? pos.market_value;
       const usingMarketPrice = dbPrice === undefined;
+      const startDate = orderDates.get(pos.i) || new Date(0);
 
       return {
         name: pos.base_contract_code,
-        startDate: new Date(0),
+        startDate,
         endDate: new Date(pos.maturity_d),
         startPrice: pos.price_a * 100,
         currentPrice,
