@@ -1,16 +1,11 @@
 import type { Collection } from 'mongodb';
 
-export interface User {
+export type User = {
   userId: number;
-  name: string;
+  login: string;
+  password: string;
 }
 
-export interface Chat {
-  chatId: number;
-  title: string;
-}
-
-export interface Database {
+export type Database = {
   user: Collection<User>;
-  chat: Collection<Chat>;
 }

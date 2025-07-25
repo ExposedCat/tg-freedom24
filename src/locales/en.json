@@ -1,4 +1,30 @@
-{
-  "start": "[${chatName}] Hi there, ${name}!",
-  "stop": "[${chatName}] Bye, ${name}!"
+  {
+  "start": "To start, please provide your Public and Private keys.\n\n- Follow <a href=\"https://freedom24.com/tradernet-api/auth-api\">Freedom24 Auth API</a>\n- Click\"Generate a new key pair\" button\n- Click \"Secret Key\" button\nCopy both keys and send them here as <code>/start PUBLIC_KEY PRIVATE_KEY</code>\n\nNote: your API keys will be stored in the database as raw strings. Do <b>not</b> enable \"Allow trading and submission of orders\" for security reasons",
+  "created": "Credentials saved. Hit /start again to change them anytime. See /portfolio to see your portfolio",
+  "portfolio": {
+    "part": {
+      "USD": "💵 ${amount}",
+      "EUR": "💶 ${amount}",
+      "currency": "${name} ${amount}",
+      "option": "${state} <b><a href=\"https://freedom24.com/charts/${name}\">${name}</a></b> \\$${change}\n$${startPrice} / \\$${currentPrice}\n${startDate} → ${endDate} (${timeLeft})\n🎯 \\$${strike}",
+      "total": "${state} \\$${total} "
+    },
+    "icon": {
+      "state": {
+        "profit": "🟢",
+        "loss": "🔴",
+        "zero": "⚪",
+        "falling": "🗑",
+        "rising": "🚀"
+      },
+      "market": {
+        "closed": "📓 Market Closed",
+        "pre": "📙 Premarket",
+        "open": "📗 Market Open",
+        "post": "📘 Postmarket"
+      }
+    },
+    "full": "${market}\n———\n\n${cash}\n\n${positions}\n\n———\n${total}",
+    "error": "Failed to fetch portfolio: ${error}"
+  }
 }

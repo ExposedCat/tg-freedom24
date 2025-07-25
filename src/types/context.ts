@@ -1,15 +1,14 @@
 import type { I18nContextFlavor, TemplateData } from '@grammyjs/i18n';
 import type { Context, SessionFlavor } from 'grammy';
 
-import type { Chat, Database, User } from './database.js';
+import type { Database, User } from './database.js';
 import type { Extra } from './telegram.js';
 
 export interface Custom<C extends Context> {
   text: (text: string, templateData?: TemplateData, extra?: Extra) => ReturnType<C['reply']>;
 
   dbEntities: {
-    user: User;
-    chat: Chat | null;
+    user: User | null;
   };
 
   db: Database;

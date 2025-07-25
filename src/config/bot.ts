@@ -2,13 +2,12 @@ import type { I18n } from '@grammyjs/i18n/dist/source/i18n.js';
 import { Bot as TelegramBot, session } from 'grammy';
 
 import { startController } from '../controllers/start.js';
-import { stopController } from '../controllers/stop.js';
+import { portfolioController } from '../controllers/portfolio.js';
 import { resolvePath } from '../helpers/resolve-path.js';
-import { getOrCreateChat } from '../services/chat.js';
 import { createReplyWithTextFunc } from '../services/context.js';
-import { buildName, getOrCreateUser } from '../services/user.js';
+import { getUser } from '../services/user.js';
 import type { CustomContext } from '../types/context.js';
-import type { Chat, Database } from '../types/database.js';
+import type { Database } from '../types/database.js';
 import type { Bot } from '../types/telegram.js';
 import { initLocaleEngine } from './locale-engine.js';
 
@@ -21,22 +20,11 @@ function extendContext(bot: Bot, database: Database) {
     ctx.text = createReplyWithTextFunc(ctx);
     ctx.db = database;
 
-    let chat: Chat | null = null;
-    if (ctx.chat.type !== 'private') {
-      chat = await getOrCreateChat({
-        db: database,
-        chatId: ctx.chat.id,
-        title: ctx.chat.title,
-      });
-    }
-
     ctx.dbEntities = {
-      user: await getOrCreateUser({
+      user: await getUser({
         db: database,
         userId: ctx.from.id,
-        name: buildName(ctx.from.first_name, ctx.from.last_name),
       }),
-      chat,
     };
 
     await next();
@@ -56,7 +44,7 @@ function setupMiddlewares(bot: Bot, localeEngine: I18n) {
 
 function setupControllers(bot: Bot) {
   bot.use(startController);
-  bot.use(stopController);
+  bot.use(portfolioController);
 }
 
 export async function startBot(database: Database) {
