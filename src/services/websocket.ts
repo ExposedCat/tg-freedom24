@@ -8,6 +8,11 @@ export class TradenetWebSocket {
   private database: Database | null = null;
   private adminSID: string | null = null;
   private subscribedOptions: Set<string> = new Set();
+  private isIntentionallyDisconnected: boolean = false;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
+  private baseReconnectDelay: number = 1000; // 1 second
 
   private constructor() {}
 
@@ -44,6 +49,7 @@ export class TradenetWebSocket {
   private async connectInstance(sid: string): Promise<boolean> {
     return new Promise(resolve => {
       this.adminSID = sid;
+      this.isIntentionallyDisconnected = false;
       this.ws = new WebSocket(`wss://wss.tradernet.com/?SID=${sid}`);
 
       const timeout = setTimeout(() => {
@@ -62,6 +68,7 @@ export class TradenetWebSocket {
 
             if (type === 'userData' && payload.mode === 'prod') {
               clearTimeout(timeout);
+              this.reconnectAttempts = 0;
               await this.subscribeToExistingPortfolios();
               resolve(true);
             } else if (type === 'q' && payload.c && payload.bbp !== undefined) {
@@ -80,19 +87,63 @@ export class TradenetWebSocket {
       });
 
       this.ws.on('close', () => {
+        console.error('WebSocket connection closed');
         clearTimeout(timeout);
+
+        if (!this.isIntentionallyDisconnected && this.adminSID) {
+          this.scheduleReconnection();
+        }
+
         resolve(false);
       });
     });
   }
 
+  private scheduleReconnection(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error(`Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
+      return;
+    }
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+
+    const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts);
+    this.reconnectAttempts++;
+
+    console.log(`Scheduling reconnection attempt ${this.reconnectAttempts} in ${delay}ms`);
+
+    this.reconnectTimeout = setTimeout(async () => {
+      if (this.adminSID && !this.isIntentionallyDisconnected) {
+        console.log(`Attempting to reconnect (attempt ${this.reconnectAttempts})`);
+
+        const success = await this.connectInstance(this.adminSID);
+        if (!success) {
+          this.scheduleReconnection();
+        } else {
+          console.log('Reconnection successful');
+        }
+      }
+    }, delay);
+  }
+
   private async disconnectInstance(): Promise<void> {
+    this.isIntentionallyDisconnected = true;
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
+
     this.adminSID = null;
     this.subscribedOptions.clear();
+    this.reconnectAttempts = 0;
   }
 
   private async subscribeToExistingPortfolios(): Promise<void> {
