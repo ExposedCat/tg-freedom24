@@ -90,7 +90,7 @@ export async function subscribeToNotificationTickers(database: Database): Promis
 }
 
 function shouldTriggerNotification(notification: Notification, currentPrice: number): boolean {
-  if (notification.direction === '>' && currentPrice > notification.price) {
+  if (notification.direction === '>' && currentPrice >= notification.price) {
     return true;
   }
   if (notification.direction === '<' && currentPrice < notification.price) {
@@ -126,8 +126,8 @@ function createNotificationMessage(
   notificationIndex: number,
 ): string {
   const direction = notification.direction === '>' ? 'above' : 'below';
-  const targetPrice = Math.round(notification.price / 100);
-  const actualPrice = Math.round(currentPrice / 100);
+  const targetPrice = (notification.price / 100).toFixed(1);
+  const actualPrice = (currentPrice / 100).toFixed(1);
 
   return `🔔 ${notification.ticker} is now ${direction} $${targetPrice}!\nCurrent price: $${actualPrice}\n\nRemove this notification: /n_${notificationIndex}`;
 }

@@ -3,8 +3,7 @@ import type { CustomContext } from '../types/context.js';
 import { TradenetWebSocket } from '../services/websocket.js';
 
 function formatPrice(amount: number): string {
-  const rounded = Math.round(amount);
-  return `$${rounded}`;
+  return `$${amount.toFixed(1)}`;
 }
 
 export const subscriptionController = new Composer<CustomContext>();

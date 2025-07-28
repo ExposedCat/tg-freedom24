@@ -4,8 +4,7 @@ import type { Notification } from '../types/database.js';
 import { TradenetWebSocket } from '../services/websocket.js';
 
 function formatPrice(amount: number): string {
-  const rounded = Math.round(amount);
-  return `$${rounded}`;
+  return `$${amount.toFixed(1)}`;
 }
 
 export const notificationController = new Composer<CustomContext>();
@@ -45,7 +44,7 @@ notificationController.command('notify', async ctx => {
   );
 
   if (existingIndex !== -1) {
-    const escapedCondition = priceCondition.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedCondition = priceCondition.replace(/</g, '&lt;').replace(/>/g, '≥');
     await ctx.text('notification.setup.already_exists', { ticker: tickerUpper, condition: escapedCondition });
     return;
   }
@@ -71,7 +70,7 @@ notificationController.command('notify', async ctx => {
 
     await ctx.text('notification.setup.success', {
       ticker: tickerUpper,
-      direction: direction === '>' ? '&gt;' : '&lt;',
+      direction: direction === '>' ? '≥' : '&lt;',
       price: formatPrice(price / 100),
     });
   } catch (error) {
@@ -104,7 +103,7 @@ notificationController.hears(/^\/n_(\d+)$/, async ctx => {
 
     await ctx.text('notification.remove.success', {
       ticker: notification.ticker,
-      direction: notification.direction === '>' ? '&gt;' : '&lt;',
+      direction: notification.direction === '>' ? '≥' : '&lt;',
       price: formatPrice(notification.price / 100),
     });
   } catch (error) {
@@ -142,7 +141,7 @@ notificationController.command('notifications', async ctx => {
         return ctx.i18n.t('notification.list.item', {
           index: index + 1,
           ticker: notification.ticker,
-          direction: notification.direction === '>' ? '&gt;' : '&lt;',
+          direction: notification.direction === '>' ? '≥' : '&lt;',
           targetPrice,
           currentPrice: currentPriceText,
         });
