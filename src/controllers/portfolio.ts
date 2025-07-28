@@ -4,6 +4,7 @@ import type { CustomContext } from '../types/context.js';
 import { fetchPortfolio, type Option } from '../services/freedom/api.js';
 import { TradenetWebSocket } from '../services/websocket.js';
 import { formatCurrency, formatPercentage, formatTimeLeft, getMarketState } from '../services/formatters.js';
+import { getUser } from '../services/user.js';
 
 function processPosition(position: Option) {
   const profit = position.currentPrice - position.startPrice;
@@ -27,21 +28,29 @@ function processPosition(position: Option) {
 
 export const portfolioController = new Composer<CustomContext>();
 portfolioController.command('portfolio', async ctx => {
-  if (!ctx.dbEntities.user) {
+  // Check if this is a reply to another user's message
+  let targetUser = ctx.dbEntities.user;
+
+  if (ctx.message?.reply_to_message?.from?.id) {
+    // If replying to another message, get that user's portfolio instead
+    const repliedUserId = ctx.message.reply_to_message.from.id;
+    targetUser = await getUser({
+      db: ctx.db,
+      userId: repliedUserId,
+    });
+  }
+
+  if (!targetUser) {
     await ctx.text('start');
     return;
   }
 
-  if (!ctx.dbEntities.user.apiKey || !ctx.dbEntities.user.secretKey) {
+  if (!targetUser.apiKey || !targetUser.secretKey) {
     await ctx.text('start');
     return;
   }
 
-  const { error, ...portfolio } = await fetchPortfolio(
-    ctx.dbEntities.user.apiKey,
-    ctx.dbEntities.user.secretKey,
-    ctx.db,
-  );
+  const { error, ...portfolio } = await fetchPortfolio(targetUser.apiKey, targetUser.secretKey, ctx.db);
 
   if (error) {
     await ctx.text('portfolio.error', { error });
