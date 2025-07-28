@@ -79,12 +79,12 @@ notificationController.command('notify', async ctx => {
   }
 });
 
-notificationController.hears(/^\/n_(\d+)$/, async ctx => {
+notificationController.hears(/^\/n_(\d+)(?:@\w+)?$/, async ctx => {
   if (!ctx.chat) {
     return;
   }
 
-  const match = ctx.message?.text?.match(/^\/n_(\d+)$/);
+  const match = ctx.message?.text?.match(/^\/n_(\d+)(?:@\w+)?$/);
   if (!match) return;
 
   const index = parseInt(match[1], 10) - 1;
