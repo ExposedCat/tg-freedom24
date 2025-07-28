@@ -39,7 +39,7 @@
       "error": "❌ Failed to subscribe to <b>${ticker}</b>. Please try again later."
     },
     "unsubscribe": {
-      "invalid": "❌ Invalid subscription number. Use /subscriptions to see your current subscriptions.",
+      "invalid": "❌ Invalid subscription number. Use /subs to see your current subscriptions.",
       "success": "✅ Successfully unsubscribed from <b>${ticker}</b>",
       "error": "❌ Failed to unsubscribe from <b>${ticker}</b>. Please try again later."
     },

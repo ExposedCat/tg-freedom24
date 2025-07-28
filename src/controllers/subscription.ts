@@ -45,12 +45,12 @@ subscriptionController.command('subscribe', async ctx => {
   }
 });
 
-subscriptionController.hears(/^\/u_(\d+)$/, async ctx => {
+subscriptionController.hears(/^\/u_(\d+)(?:@\w+)?$/, async ctx => {
   if (!ctx.chat) {
     return;
   }
 
-  const match = ctx.message?.text?.match(/^\/u_(\d+)$/);
+  const match = ctx.message?.text?.match(/^\/u_(\d+)(?:@\w+)?$/);
   if (!match) return;
 
   const index = parseInt(match[1], 10) - 1;
@@ -74,7 +74,7 @@ subscriptionController.hears(/^\/u_(\d+)$/, async ctx => {
   }
 });
 
-subscriptionController.command('subscriptions', async ctx => {
+subscriptionController.command('subs', async ctx => {
   if (!ctx.chat) {
     return;
   }
