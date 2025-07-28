@@ -69,16 +69,19 @@ portfolioController.command('portfolio', async ctx => {
         }),
       )
       .join('\n'),
-    positions: portfolio.positions
-      .map(position => {
-        const processed = processPosition(position);
-        return ctx.i18n.t('portfolio.part.option', {
-          ...processed,
-          state: ctx.i18n.t(`portfolio.icon.state.${processed.state}`),
-          priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
-        });
-      })
-      .join('\n\n'),
+    positions:
+      portfolio.positions.length === 0
+        ? ctx.i18n.t('portfolio.part.no_positions')
+        : portfolio.positions
+            .map(position => {
+              const processed = processPosition(position);
+              return ctx.i18n.t('portfolio.part.option', {
+                ...processed,
+                state: ctx.i18n.t(`portfolio.icon.state.${processed.state}`),
+                priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
+              });
+            })
+            .join('\n\n'),
     total: ctx.i18n.t('portfolio.part.total', {
       state: ctx.i18n.t(`portfolio.icon.state.${portfolio.total >= 0 ? 'rising' : 'falling'}`),
       total: formatCurrency(portfolio.total),

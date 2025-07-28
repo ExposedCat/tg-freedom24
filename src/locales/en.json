@@ -7,7 +7,8 @@
       "EUR": "💶 €${amount}",
       "currency": "${name} ${amount}",
       "option": "${state} <b><a href=\"https://freedom24.com/charts/${name}\">${name}</a></b> ${change} ${percent}\n$${startPrice} / $${currentPrice}${priceWarning}\n${startDate} → ${endDate} (${timeLeft})\n🎯 ${strike}",
-      "total": "${state} ${total} ${dataWarning}"
+      "total": "${state} ${total} ${dataWarning}",
+      "no_positions": "<i>No open positions</i>"
     },
     "icon": {
       "state": {
