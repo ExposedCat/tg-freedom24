@@ -18,10 +18,10 @@
         "rising": "🚀"
       },
       "market": {
-        "closed": "📓 Market Closed",
-        "pre": "📙 Premarket",
-        "open": "📗 Market Open",
-        "post": "📘 Postmarket"
+        "closed": "📓 Market Closed (pre 10:00, open 15:30)",
+        "pre": "📙 Premarket (open 15:30)",
+        "open": "📗 Market Open (until 22:00)",
+        "post": "📘 Postmarket (pre 10:00 tomorrow, open 15:30)"
       },
       "data": {
         "warning": "⚠️"
