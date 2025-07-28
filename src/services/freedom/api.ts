@@ -10,6 +10,7 @@ export type Option = {
   endDate: Date;
   startPrice: number;
   currentPrice: number;
+  baseTickerPrice: number;
   strike: number;
   usingMarketPrice: boolean;
 };
@@ -23,6 +24,7 @@ export type UserPortfolio = {
   cash: Cash[];
   positions: Option[];
   total: number;
+  totalPercentage: number;
 };
 
 export type PortfolioResponse = {
@@ -73,7 +75,7 @@ async function fetchOrdersHistory(apiKey: string, secretKey: string): Promise<Or
     }
     return null;
   } catch (error) {
-    console.error('Error fetching order history:', error);
+    console.error('[API] Error fetching order history:', error);
     return null;
   }
 }
@@ -89,6 +91,7 @@ export async function fetchPortfolio(
       cash: [],
       positions: [],
       total: 0,
+      totalPercentage: 0,
     };
   }
 
@@ -110,18 +113,22 @@ export async function fetchPortfolio(
     });
 
     if (!res.ok) {
-      return { error: await res.text(), cash: [], positions: [], total: 0 };
+      const errorText = await res.text();
+      return { error: errorText, cash: [], positions: [], total: 0, totalPercentage: 0 };
     }
 
     const response: Freedom24PortfolioResponse = await res.json();
 
     if (!response.result || !response.result.ps || !response.result.ps.pos) {
-      console.error('Invalid API response structure:', response);
-      return { error: 'Invalid API response structure', cash: [], positions: [], total: 0 };
+      console.error('[API] Invalid API response structure:', response);
+      return { error: 'Invalid API response structure', cash: [], positions: [], total: 0, totalPercentage: 0 };
     }
 
     const tickerNames = response.result.ps.pos.map(pos => pos.i);
-    const dbPrices = await getPrices(database, tickerNames);
+    const baseTickerNames = response.result.ps.pos.map(pos => pos.base_contract_code);
+    const allTickerNames = [...tickerNames, ...baseTickerNames];
+
+    const dbPrices = await getPrices(database, allTickerNames);
 
     const orderHistory = await fetchOrdersHistory(apiKey, secretKey);
     const orderDates = new Map<string, Date>();
@@ -134,7 +141,8 @@ export async function fetchPortfolio(
 
     const positions = response.result.ps.pos.map(pos => {
       const dbPrice = dbPrices.get(pos.i);
-      const currentPrice = dbPrice ?? pos.market_value;
+      const baseTickerPrice = (dbPrices.get(pos.base_contract_code) ?? 0) / 100;
+      const currentPrice = dbPrice ?? pos.market_value * 100;
       const usingMarketPrice = dbPrice === undefined;
       const startDate = orderDates.get(pos.i) || new Date(0);
 
@@ -144,6 +152,7 @@ export async function fetchPortfolio(
         endDate: new Date(pos.maturity_d),
         startPrice: pos.price_a * 100,
         currentPrice,
+        baseTickerPrice,
         strike: Number(pos.i.split('C').at(-1)),
         usingMarketPrice,
       };
@@ -151,8 +160,14 @@ export async function fetchPortfolio(
 
     if (TradenetWebSocket.isConnected()) {
       const rawPositions = response.result.ps.pos.map(pos => ({ name: pos.i }));
-      await TradenetWebSocket.checkForNewOptionsInPortfolio(rawPositions);
+      const basePositions = response.result.ps.pos.map(pos => ({ name: pos.base_contract_code }));
+      const allPositions = [...rawPositions, ...basePositions];
+      await TradenetWebSocket.checkForNewOptionsInPortfolio(allPositions);
     }
+
+    const totalInvested = positions.reduce((total, position) => total + position.startPrice, 0);
+    const totalProfit = positions.reduce((total, position) => total + position.currentPrice - position.startPrice, 0);
+    const totalPercentage = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
 
     const portfolio: UserPortfolio = {
       cash: response.result.ps.acc.map(acc => ({
@@ -160,12 +175,13 @@ export async function fetchPortfolio(
         amount: acc.s,
       })),
       positions,
-      total: positions.reduce((total, position) => total + position.currentPrice - position.startPrice, 0),
+      total: totalProfit,
+      totalPercentage,
     };
 
     return { error: null, ...portfolio };
   } catch (error) {
-    console.error(error);
-    return { error: 'internal error', cash: [], positions: [], total: 0 };
+    console.error('[API] Portfolio fetch error:', error);
+    return { error: 'internal error', cash: [], positions: [], total: 0, totalPercentage: 0 };
   }
 }

@@ -15,7 +15,7 @@ export async function getPrices(database: Database, tickers: string[]): Promise<
 
     return pricesMap;
   } catch (error) {
-    console.error('Error fetching ticker prices:', error);
+    console.error('[TICKER] Error fetching ticker prices:', error);
     return new Map();
   }
 }

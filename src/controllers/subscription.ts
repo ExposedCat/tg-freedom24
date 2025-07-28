@@ -36,7 +36,7 @@ subscriptionController.command('subscribe', async ctx => {
       { upsert: true },
     );
 
-    await TradenetWebSocket.subscribeToUserTicker(ticker);
+    await TradenetWebSocket.refreshAllSubscriptions();
 
     await ctx.text('subscription.subscribe.success', { ticker });
   } catch (error) {
@@ -66,6 +66,8 @@ subscriptionController.hears(/^\/u_(\d+)(?:@\w+)?$/, async ctx => {
 
   try {
     await ctx.db.chat.updateOne({ chatId: ctx.chat.id }, { $set: { subscriptions: updatedSubscriptions } });
+
+    await TradenetWebSocket.refreshAllSubscriptions();
 
     await ctx.text('subscription.unsubscribe.success', { ticker });
   } catch (error) {

@@ -9,13 +9,14 @@ export class TradenetWebSocket {
   private ws: WebSocket | null = null;
   private database: Database | null = null;
   private adminSID: string | null = null;
-  private subscribedOptions: Set<string> = new Set();
+  private desiredSubscriptions: Set<string> = new Set();
   private isIntentionallyDisconnected: boolean = false;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
   private baseReconnectDelay: number = 1000;
-  private priceUpdateCallbacks: PriceUpdateCallback[] = []; // 1 second
+  private priceUpdateCallbacks: PriceUpdateCallback[] = [];
+  private isAuthenticated: boolean = false;
 
   private constructor() {}
 
@@ -45,15 +46,21 @@ export class TradenetWebSocket {
     }
   }
 
-  static async checkForNewOptionsInPortfolio(positions: { name: string }[]): Promise<void> {
-    if (TradenetWebSocket.instance) {
-      await TradenetWebSocket.instance.checkForNewOptionsInPortfolioInstance(positions);
+  static async checkForNewOptionsInPortfolio(_positions: { name: string }[]): Promise<void> {
+    if (TradenetWebSocket.instance && TradenetWebSocket.instance.isAuthenticated) {
+      await TradenetWebSocket.instance.refreshSubscriptions();
     }
   }
 
   static async subscribeToUserTicker(ticker: string): Promise<void> {
-    if (TradenetWebSocket.instance) {
+    if (TradenetWebSocket.instance && TradenetWebSocket.instance.isAuthenticated) {
       await TradenetWebSocket.instance.subscribeToOptions([ticker]);
+    }
+  }
+
+  static async refreshAllSubscriptions(): Promise<void> {
+    if (TradenetWebSocket.instance && TradenetWebSocket.instance.isAuthenticated) {
+      await TradenetWebSocket.instance.refreshSubscriptions();
     }
   }
 
@@ -65,7 +72,9 @@ export class TradenetWebSocket {
     return new Promise(resolve => {
       this.adminSID = sid;
       this.isIntentionallyDisconnected = false;
-      this.ws = new WebSocket(`wss://wss.tradernet.com/?SID=${sid}`);
+      const wsUrl = `wss://wss.tradernet.com/?SID=${sid}`;
+
+      this.ws = new WebSocket(wsUrl);
 
       const timeout = setTimeout(() => {
         if (this.ws) {
@@ -74,9 +83,14 @@ export class TradenetWebSocket {
         resolve(false);
       }, 10000);
 
+      this.ws.on('open', () => {
+        console.log('[WS] Connected');
+      });
+
       this.ws.on('message', async data => {
         try {
-          const message = JSON.parse(data.toString());
+          const rawMessage = data.toString();
+          const message = JSON.parse(rawMessage);
 
           if (Array.isArray(message) && message.length >= 2) {
             const [type, payload] = message;
@@ -84,27 +98,30 @@ export class TradenetWebSocket {
             if (type === 'userData' && payload.mode === 'prod') {
               clearTimeout(timeout);
               this.reconnectAttempts = 0;
-              await this.subscribeToExistingPortfolios();
-              await this.subscribeToUserSubscriptions();
+              this.isAuthenticated = true;
+              await this.initializeAllSubscriptions();
               resolve(true);
             } else if (type === 'q' && payload.c && payload.bbp !== undefined) {
-              await this.savePriceUpdate(payload.c, payload.bbp * 100);
-              await this.notifyPriceUpdate(payload.c, payload.bbp * 100);
+              const ticker = payload.c;
+              const price = payload.bbp * 100;
+              await this.savePriceUpdate(ticker, price);
+              await this.notifyPriceUpdate(ticker, price);
             }
           }
         } catch (error) {
-          console.error('Error processing WebSocket message:', error);
+          console.error('[WS] Error processing WebSocket message:', error);
         }
       });
 
       this.ws.on('error', error => {
-        console.error('WebSocket error:', error);
+        console.error('[WS] Error:', error.message);
         clearTimeout(timeout);
         resolve(false);
       });
 
-      this.ws.on('close', () => {
-        console.error('WebSocket connection closed');
+      this.ws.on('close', code => {
+        console.log(`[WS] Disconnected (${code})`);
+        this.isAuthenticated = false;
         clearTimeout(timeout);
 
         if (!this.isIntentionallyDisconnected && this.adminSID) {
@@ -118,7 +135,6 @@ export class TradenetWebSocket {
 
   private scheduleReconnection(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`Max reconnection attempts (${this.maxReconnectAttempts}) reached. Giving up.`);
       return;
     }
 
@@ -129,17 +145,11 @@ export class TradenetWebSocket {
     const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts);
     this.reconnectAttempts++;
 
-    console.log(`Scheduling reconnection attempt ${this.reconnectAttempts} in ${delay}ms`);
-
     this.reconnectTimeout = setTimeout(async () => {
       if (this.adminSID && !this.isIntentionallyDisconnected) {
-        console.log(`Attempting to reconnect (attempt ${this.reconnectAttempts})`);
-
         const success = await this.connectInstance(this.adminSID);
         if (!success) {
           this.scheduleReconnection();
-        } else {
-          console.log('Reconnection successful');
         }
       }
     }, delay);
@@ -147,6 +157,7 @@ export class TradenetWebSocket {
 
   private async disconnectInstance(): Promise<void> {
     this.isIntentionallyDisconnected = true;
+    this.isAuthenticated = false;
 
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -159,17 +170,20 @@ export class TradenetWebSocket {
     }
 
     this.adminSID = null;
-    this.subscribedOptions.clear();
+    this.desiredSubscriptions.clear();
     this.reconnectAttempts = 0;
   }
 
-  private async subscribeToExistingPortfolios(): Promise<void> {
-    if (!this.database) return;
+  private async refreshSubscriptions(): Promise<void> {
+    if (!this.database || !this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) {
+      return;
+    }
 
+    const allSubscriptions = new Set<string>();
+
+    // Get portfolio subscriptions
     try {
       const users = await this.database.user.find({}).toArray();
-      const allOptionNames = new Set<string>();
-
       for (const user of users) {
         try {
           if (!user.apiKey || !user.secretKey) {
@@ -195,87 +209,96 @@ export class TradenetWebSocket {
             const response = await res.json();
             if (response.result?.ps?.pos) {
               for (const pos of response.result.ps.pos) {
-                allOptionNames.add(pos.i);
+                allSubscriptions.add(pos.i);
               }
             }
           }
         } catch (error) {
-          console.error(`Error fetching portfolio for user ${user.userId}:`, error);
+          console.error(`[WS] Error fetching portfolio for user ${user.userId}:`, error);
         }
       }
+    } catch (error) {
+      console.error('[WS] Error getting portfolio subscriptions:', error);
+    }
 
-      if (allOptionNames.size > 0) {
-        await this.subscribeToOptions(Array.from(allOptionNames));
+    // Get notification and subscription tickers
+    try {
+      const chats = await this.database.chat.find({}).toArray();
+      for (const chat of chats) {
+        // Add subscription tickers
+        if (chat.subscriptions && Array.isArray(chat.subscriptions)) {
+          for (const ticker of chat.subscriptions) {
+            allSubscriptions.add(ticker);
+          }
+        }
+        // Add notification tickers
+        if (chat.notifications && Array.isArray(chat.notifications)) {
+          for (const notification of chat.notifications) {
+            allSubscriptions.add(notification.ticker);
+          }
+        }
       }
     } catch (error) {
-      console.error('Error subscribing to existing portfolios:', error);
+      console.error('[WS] Error getting chat subscriptions:', error);
+    }
+
+    // Send portfolio subscription first if we have portfolio data
+    if (allSubscriptions.size > 0) {
+      // Check if we have any portfolio subscriptions by looking for option-like names
+      const hasPortfolioSubs = Array.from(allSubscriptions).some(sub => sub.includes('C') || sub.includes('P'));
+      if (hasPortfolioSubs) {
+        this.ws.send(JSON.stringify(['portfolio']));
+      }
+    }
+
+    // Update desired subscriptions and send quotes message
+    this.desiredSubscriptions = allSubscriptions;
+    if (allSubscriptions.size > 0) {
+      const message = JSON.stringify(['quotes', Array.from(allSubscriptions)]);
+      this.ws.send(message);
     }
   }
 
+  private async initializeAllSubscriptions(): Promise<void> {
+    // Use the same logic as refreshSubscriptions
+    await this.refreshSubscriptions();
+  }
+
   private async subscribeToOptions(optionNames: string[]): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) {
       return;
     }
 
-    const newOptions = optionNames.filter(name => !this.subscribedOptions.has(name));
+    // Add all options to desired subscriptions
+    for (const option of optionNames) {
+      this.desiredSubscriptions.add(option);
+    }
 
-    if (newOptions.length > 0) {
-      const message = JSON.stringify(['quotes', newOptions]);
+    // Send ALL desired subscriptions (since quotes message replaces all)
+    if (this.desiredSubscriptions.size > 0) {
+      const message = JSON.stringify(['quotes', Array.from(this.desiredSubscriptions)]);
       this.ws.send(message);
-
-      for (const option of newOptions) {
-        this.subscribedOptions.add(option);
-      }
     }
   }
 
   private async savePriceUpdate(name: string, price: number): Promise<void> {
-    if (!this.database) return;
-
-    if (price === 0) {
+    if (!this.database || price === 0) {
       return;
     }
 
     try {
-      await this.database.tickers.updateOne({ name }, { $set: { name, lastPrice: price } }, { upsert: true });
+      await this.database.tickers.updateOne(
+        { name },
+        { $set: { name, lastPrice: price, lastUpdated: new Date() } },
+        { upsert: true },
+      );
     } catch (error) {
-      console.error('Error saving price update:', error);
-    }
-  }
-
-  private async checkForNewOptionsInPortfolioInstance(positions: { name: string }[]): Promise<void> {
-    const newOptionNames = positions.map(p => p.name).filter(name => !this.subscribedOptions.has(name));
-
-    if (newOptionNames.length > 0) {
-      await this.subscribeToOptions(newOptionNames);
+      console.error(`[PRICE] Error saving price update for ${name}:`, error);
     }
   }
 
   private isConnectedInstance(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
-  }
-
-  private async subscribeToUserSubscriptions(): Promise<void> {
-    if (!this.database) return;
-
-    try {
-      const chats = await this.database.chat.find({}).toArray();
-      const allChatTickers = new Set<string>();
-
-      for (const chat of chats) {
-        if (chat.subscriptions && Array.isArray(chat.subscriptions)) {
-          for (const ticker of chat.subscriptions) {
-            allChatTickers.add(ticker);
-          }
-        }
-      }
-
-      if (allChatTickers.size > 0) {
-        await this.subscribeToOptions(Array.from(allChatTickers));
-      }
-    } catch (error) {
-      console.error('Error subscribing to chat subscriptions:', error);
-    }
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN && this.isAuthenticated;
   }
 
   private async notifyPriceUpdate(ticker: string, price: number): Promise<void> {
@@ -283,7 +306,7 @@ export class TradenetWebSocket {
       try {
         await callback(ticker, price);
       } catch (error) {
-        console.error('Error in price update callback:', error);
+        console.error(`[WS] Error in price update callback for ${ticker}:`, error);
       }
     }
   }

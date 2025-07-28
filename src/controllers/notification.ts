@@ -66,7 +66,7 @@ notificationController.command('notify', async ctx => {
       { upsert: true },
     );
 
-    await TradenetWebSocket.subscribeToUserTicker(tickerUpper);
+    await TradenetWebSocket.refreshAllSubscriptions();
 
     await ctx.text('notification.setup.success', {
       ticker: tickerUpper,
@@ -100,6 +100,8 @@ notificationController.hears(/^\/n_(\d+)(?:@\w+)?$/, async ctx => {
 
   try {
     await ctx.db.chat.updateOne({ chatId: ctx.chat.id }, { $set: { notifications: updatedNotifications } });
+
+    await TradenetWebSocket.refreshAllSubscriptions();
 
     await ctx.text('notification.remove.success', {
       ticker: notification.ticker,

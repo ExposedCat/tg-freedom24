@@ -24,6 +24,7 @@ export type Chat = {
 export type Ticker = {
   name: string;
   lastPrice: number;
+  lastUpdated?: Date;
 };
 
 export type Database = {

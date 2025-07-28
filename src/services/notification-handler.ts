@@ -25,7 +25,7 @@ export class NotificationHandler {
         await this.sendMessage(result.chatId, result.message);
       }
     } catch (error) {
-      console.error('Error handling notifications:', error);
+      console.error(`[NOTIFY] Error handling notifications for ${ticker}:`, error);
     }
   }
 
@@ -35,18 +35,19 @@ export class NotificationHandler {
         link_preview_options: { is_disabled: true },
       });
     } catch (error) {
-      console.error('Error sending notification message:', error);
+      console.error(`[NOTIFY] Error sending notification message to chat ${chatId}:`, error);
     }
   }
 
   async subscribeToNotificationTickers(): Promise<void> {
     try {
       const tickers = await subscribeToNotificationTickers(this.database);
+
       for (const ticker of tickers) {
         await TradenetWebSocket.subscribeToUserTicker(ticker);
       }
     } catch (error) {
-      console.error('Error subscribing to notification tickers:', error);
+      console.error('[NOTIFY] Error subscribing to notification tickers:', error);
     }
   }
 }
