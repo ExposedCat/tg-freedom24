@@ -78,5 +78,14 @@
       "no_price": "No price data",
       "error": "❌ Failed to fetch notifications. Please try again later."
     }
+  },
+  "history": {
+    "empty": "No completed trades found",
+    "error": "Failed to fetch order history: ${error}",
+    "part": {
+      "ticker_summary": "${state} <a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a> <b>${profit}</b>${count}",
+      "total_line": "${state} ${profit} ${percentage}"
+    },
+    "full": "${summary}\n———\n${totals}"
   }
 }

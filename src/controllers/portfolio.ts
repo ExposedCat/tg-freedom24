@@ -10,7 +10,7 @@ import {
   formatTimeFromNow,
   getMarketState,
 } from '../services/formatters.js';
-import { getUser } from '../services/user.js';
+import { getPortfolioState, validateUser } from '../services/portfolio-utils.js';
 
 function processPosition(position: Option) {
   const profit = position.currentPrice - position.startPrice;
@@ -37,38 +37,10 @@ function processPosition(position: Option) {
   };
 }
 
-function getPortfolioState(percentage: number): string {
-  if (percentage === 0) return 'nothing';
-  if (percentage >= 50) return 'huge_gain';
-  if (percentage >= 20) return 'moderate_gain';
-  if (percentage > 0) return 'small_gain';
-  if (percentage < -5) return 'small_loss';
-  if (percentage < -20) return 'moderate_loss';
-  if (percentage < -50) return 'significant_loss';
-  return 'significant_loss';
-}
-
 export const portfolioController = new Composer<CustomContext>();
 portfolioController.command('portfolio', async ctx => {
-  let targetUser = ctx.dbEntities.user;
-
-  if (ctx.message?.reply_to_message?.from?.id) {
-    const repliedUserId = ctx.message.reply_to_message.from.id;
-    targetUser = await getUser({
-      db: ctx.db,
-      userId: repliedUserId,
-    });
-  }
-
-  if (!targetUser) {
-    await ctx.text('start');
-    return;
-  }
-
-  if (!targetUser.apiKey || !targetUser.secretKey) {
-    await ctx.text('start');
-    return;
-  }
+  const { isValid, targetUser } = await validateUser(ctx);
+  if (!isValid || !targetUser) return;
 
   const { error, ...portfolio } = await fetchPortfolio(targetUser.apiKey, targetUser.secretKey, ctx.db);
 

@@ -36,22 +36,32 @@ type OrderHistoryResponse = {
     order: Array<{
       instr: string;
       date: string;
+      oper?: number;
+      p?: number;
+      q?: number;
+      base_contract_code?: string;
+      stat?: number;
+      trade?: Array<{
+        p: number;
+        q: number;
+        v: number;
+        profit: number;
+        date: string;
+      }>;
+      [key: string]: any;
     }>;
   };
 };
 
-async function fetchOrdersHistory(apiKey: string, secretKey: string): Promise<OrderHistoryResponse | null> {
+export async function fetchOrdersHistory(
+  apiKey: string,
+  secretKey: string,
+  fromDate: Date,
+  toDate: Date,
+): Promise<OrderHistoryResponse | null> {
   try {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(23, 59, 59, 999);
-
-    const twoYearsAgo = new Date(tomorrow);
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-    twoYearsAgo.setHours(0, 0, 0, 0);
-
-    const from = twoYearsAgo.toISOString();
-    const to = tomorrow.toISOString();
+    const from = fromDate.toISOString();
+    const to = toDate.toISOString();
     const cmd = 'getOrdersHistory';
     const nonce = Date.now().toString();
 
@@ -130,7 +140,15 @@ export async function fetchPortfolio(
 
     const dbPrices = await getPrices(database, allTickerNames);
 
-    const orderHistory = await fetchOrdersHistory(apiKey, secretKey);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(23, 59, 59, 999);
+
+    const twoYearsAgo = new Date(tomorrow);
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    twoYearsAgo.setHours(0, 0, 0, 0);
+
+    const orderHistory = await fetchOrdersHistory(apiKey, secretKey, twoYearsAgo, tomorrow);
     const orderDates = new Map<string, Date>();
 
     if (orderHistory?.orders?.order) {

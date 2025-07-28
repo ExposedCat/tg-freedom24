@@ -5,6 +5,7 @@ import { startController } from '../controllers/start.js';
 import { portfolioController } from '../controllers/portfolio.js';
 import { subscriptionController } from '../controllers/subscription.js';
 import { notificationController } from '../controllers/notification.js';
+import { historyController } from '../controllers/history.js';
 import { resolvePath } from '../helpers/resolve-path.js';
 import { createReplyWithTextFunc } from '../services/context.js';
 import { getUser } from '../services/user.js';
@@ -54,6 +55,7 @@ function setupControllers(bot: Bot) {
   bot.use(portfolioController);
   bot.use(subscriptionController);
   bot.use(notificationController);
+  bot.use(historyController);
 }
 
 export async function startBot(database: Database) {
