@@ -49,5 +49,26 @@
       "no_price": "No price data",
       "error": "❌ Failed to fetch subscriptions. Please try again later."
     }
+  },
+  "notification": {
+    "setup": {
+      "usage": "Please provide a ticker and price condition:\n\n<code>/notify AAPL &gt;150</code>\n<code>/notify AMD.US &lt;160</code>",
+      "invalid_format": "❌ Invalid price format. Use: /notify [ticker] [&lt;|&gt;][price]",
+      "already_exists": "You already have a notification set for <b>${ticker}</b> ${condition}",
+      "success": "✅ Notification set: alert when <b>${ticker}</b> goes ${direction} ${price}",
+      "error": "❌ Failed to set notification for <b>${ticker}</b>. Please try again later."
+    },
+    "remove": {
+      "invalid": "❌ Invalid notification number. Use /notifications to see your current notifications.",
+      "success": "✅ Removed notification: <b>${ticker}</b> ${direction} ${price}",
+      "error": "❌ Failed to remove notification. Please try again later."
+    },
+    "list": {
+      "empty": "No active notifications. Use /notify [ticker] [&lt;|&gt;][price] to set up price alerts.",
+      "full": "${notifications}${dataWarning}",
+      "item": "<b><a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a></b> ${direction}${targetPrice} (now: ${currentPrice}) /n_${index}",
+      "no_price": "No price data",
+      "error": "❌ Failed to fetch notifications. Please try again later."
+    }
   }
 }

@@ -2,6 +2,8 @@ import WebSocket from 'ws';
 import type { Database } from '../types/database.js';
 import { createHmac } from 'node:crypto';
 
+type PriceUpdateCallback = (ticker: string, price: number) => Promise<void>;
+
 export class TradenetWebSocket {
   private static instance: TradenetWebSocket | null = null;
   private ws: WebSocket | null = null;
@@ -12,7 +14,8 @@ export class TradenetWebSocket {
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 5;
-  private baseReconnectDelay: number = 1000; // 1 second
+  private baseReconnectDelay: number = 1000;
+  private priceUpdateCallbacks: PriceUpdateCallback[] = []; // 1 second
 
   private constructor() {}
 
@@ -20,6 +23,12 @@ export class TradenetWebSocket {
     if (!TradenetWebSocket.instance) {
       TradenetWebSocket.instance = new TradenetWebSocket();
       TradenetWebSocket.instance.database = database;
+    }
+  }
+
+  static addPriceUpdateCallback(callback: PriceUpdateCallback): void {
+    if (TradenetWebSocket.instance) {
+      TradenetWebSocket.instance.priceUpdateCallbacks.push(callback);
     }
   }
 
@@ -80,6 +89,7 @@ export class TradenetWebSocket {
               resolve(true);
             } else if (type === 'q' && payload.c && payload.bbp !== undefined) {
               await this.savePriceUpdate(payload.c, payload.bbp * 100);
+              await this.notifyPriceUpdate(payload.c, payload.bbp * 100);
             }
           }
         } catch (error) {
@@ -265,6 +275,16 @@ export class TradenetWebSocket {
       }
     } catch (error) {
       console.error('Error subscribing to chat subscriptions:', error);
+    }
+  }
+
+  private async notifyPriceUpdate(ticker: string, price: number): Promise<void> {
+    for (const callback of this.priceUpdateCallbacks) {
+      try {
+        await callback(ticker, price);
+      } catch (error) {
+        console.error('Error in price update callback:', error);
+      }
     }
   }
 }

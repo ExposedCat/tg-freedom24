@@ -4,11 +4,13 @@ import { Bot as TelegramBot, session } from 'grammy';
 import { startController } from '../controllers/start.js';
 import { portfolioController } from '../controllers/portfolio.js';
 import { subscriptionController } from '../controllers/subscription.js';
+import { notificationController } from '../controllers/notification.js';
 import { resolvePath } from '../helpers/resolve-path.js';
 import { createReplyWithTextFunc } from '../services/context.js';
 import { getUser } from '../services/user.js';
 import { getChat } from '../services/chat.js';
 import { TradenetWebSocket } from '../services/websocket.js';
+import { NotificationHandler } from '../services/notification-handler.js';
 import type { Database } from '../types/database.js';
 import type { Bot } from '../types/telegram.js';
 import { initLocaleEngine } from './locale-engine.js';
@@ -51,10 +53,16 @@ function setupControllers(bot: Bot) {
   bot.use(startController);
   bot.use(portfolioController);
   bot.use(subscriptionController);
+  bot.use(notificationController);
 }
 
 export async function startBot(database: Database) {
+  const bot: Bot = new TelegramBot(process.env.TOKEN);
+
   TradenetWebSocket.initialize(database);
+
+  const notificationHandler = new NotificationHandler(bot, database);
+  await notificationHandler.initialize();
 
   const adminId = process.env.ADMIN_ID;
   if (adminId) {
@@ -63,8 +71,6 @@ export async function startBot(database: Database) {
       await TradenetWebSocket.connect(adminUser.sid);
     }
   }
-
-  const bot: Bot = new TelegramBot(process.env.TOKEN);
 
   const localesPath = resolvePath(import.meta.url, '../locales');
   const i18n = initLocaleEngine(localesPath);
