@@ -7,6 +7,11 @@ export type User = {
   sid: string;
 };
 
+export type Chat = {
+  chatId: number;
+  subscriptions?: string[];
+};
+
 export type Ticker = {
   name: string;
   lastPrice: number;
@@ -14,5 +19,6 @@ export type Ticker = {
 
 export type Database = {
   user: Collection<User>;
+  chat: Collection<Chat>;
   tickers: Collection<Ticker>;
 };

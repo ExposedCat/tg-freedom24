@@ -42,6 +42,12 @@ export class TradenetWebSocket {
     }
   }
 
+  static async subscribeToUserTicker(ticker: string): Promise<void> {
+    if (TradenetWebSocket.instance) {
+      await TradenetWebSocket.instance.subscribeToOptions([ticker]);
+    }
+  }
+
   static isConnected(): boolean {
     return TradenetWebSocket.instance?.isConnectedInstance() ?? false;
   }
@@ -70,6 +76,7 @@ export class TradenetWebSocket {
               clearTimeout(timeout);
               this.reconnectAttempts = 0;
               await this.subscribeToExistingPortfolios();
+              await this.subscribeToUserSubscriptions();
               resolve(true);
             } else if (type === 'q' && payload.c && payload.bbp !== undefined) {
               await this.savePriceUpdate(payload.c, payload.bbp * 100);
@@ -236,5 +243,28 @@ export class TradenetWebSocket {
 
   private isConnectedInstance(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
+
+  private async subscribeToUserSubscriptions(): Promise<void> {
+    if (!this.database) return;
+
+    try {
+      const chats = await this.database.chat.find({}).toArray();
+      const allChatTickers = new Set<string>();
+
+      for (const chat of chats) {
+        if (chat.subscriptions && Array.isArray(chat.subscriptions)) {
+          for (const ticker of chat.subscriptions) {
+            allChatTickers.add(ticker);
+          }
+        }
+      }
+
+      if (allChatTickers.size > 0) {
+        await this.subscribeToOptions(Array.from(allChatTickers));
+      }
+    } catch (error) {
+      console.error('Error subscribing to chat subscriptions:', error);
+    }
   }
 }

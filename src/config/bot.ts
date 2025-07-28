@@ -3,9 +3,11 @@ import { Bot as TelegramBot, session } from 'grammy';
 
 import { startController } from '../controllers/start.js';
 import { portfolioController } from '../controllers/portfolio.js';
+import { subscriptionController } from '../controllers/subscription.js';
 import { resolvePath } from '../helpers/resolve-path.js';
 import { createReplyWithTextFunc } from '../services/context.js';
 import { getUser } from '../services/user.js';
+import { getChat } from '../services/chat.js';
 import { TradenetWebSocket } from '../services/websocket.js';
 import type { Database } from '../types/database.js';
 import type { Bot } from '../types/telegram.js';
@@ -24,6 +26,10 @@ function extendContext(bot: Bot, database: Database) {
       user: await getUser({
         db: database,
         userId: ctx.from.id,
+      }),
+      chat: await getChat({
+        db: database,
+        chatId: ctx.chat.id,
       }),
     };
 
@@ -44,6 +50,7 @@ function setupMiddlewares(bot: Bot, localeEngine: I18n) {
 function setupControllers(bot: Bot) {
   bot.use(startController);
   bot.use(portfolioController);
+  bot.use(subscriptionController);
 }
 
 export async function startBot(database: Database) {

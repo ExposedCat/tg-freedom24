@@ -1,7 +1,7 @@
 import type { I18nContextFlavor, TemplateData } from '@grammyjs/i18n';
 import type { Context, SessionFlavor } from 'grammy';
 
-import type { Database, User } from './database.js';
+import type { Database, User, Chat } from './database.js';
 import type { Extra } from './telegram.js';
 
 export interface Custom<C extends Context> {
@@ -9,6 +9,7 @@ export interface Custom<C extends Context> {
 
   dbEntities: {
     user: User | null;
+    chat: Chat | null;
   };
 
   db: Database;
