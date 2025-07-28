@@ -159,8 +159,8 @@ export async function fetchPortfolio(
 
     const positions = response.result.ps.pos.map(pos => {
       const dbPrice = dbPrices.get(pos.i);
-      const baseTickerPrice = (dbPrices.get(pos.base_contract_code) ?? 0) / 100;
-      const currentPrice = dbPrice ?? pos.market_value * 100;
+      const baseTickerPrice = dbPrices.get(pos.base_contract_code) ?? 0;
+      const currentPrice = dbPrice ?? pos.market_value;
       const usingMarketPrice = dbPrice === undefined;
       const startDate = orderDates.get(pos.i) || new Date(0);
 

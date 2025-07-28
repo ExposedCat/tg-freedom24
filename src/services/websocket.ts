@@ -103,9 +103,11 @@ export class TradenetWebSocket {
               resolve(true);
             } else if (type === 'q' && payload.c && payload.bbp !== undefined) {
               const ticker = payload.c;
-              const price = payload.bbp * 100;
-              await this.savePriceUpdate(ticker, price);
-              await this.notifyPriceUpdate(ticker, price);
+              const price = payload.bbp * (ticker.startsWith('+') ? 100 : 1);
+              if (price > 0) {
+                await this.savePriceUpdate(ticker, price);
+                await this.notifyPriceUpdate(ticker, price);
+              }
             }
           }
         } catch (error) {

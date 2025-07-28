@@ -35,7 +35,7 @@ notificationController.command('notify', async ctx => {
   }
 
   const direction = match[1] as '>' | '<';
-  const price = parseFloat(match[2]) * 100;
+  const price = parseFloat(match[2]);
 
   const currentNotifications = ctx.dbEntities.chat?.notifications || [];
 
@@ -71,7 +71,7 @@ notificationController.command('notify', async ctx => {
     await ctx.text('notification.setup.success', {
       ticker: tickerUpper,
       direction: direction === '>' ? '≥' : '&lt;',
-      price: formatPrice(price / 100),
+      price: formatPrice(price),
     });
   } catch (error) {
     console.error('Error setting up notification:', error);
@@ -106,7 +106,7 @@ notificationController.hears(/^\/n_(\d+)(?:@\w+)?$/, async ctx => {
     await ctx.text('notification.remove.success', {
       ticker: notification.ticker,
       direction: notification.direction === '>' ? '≥' : '&lt;',
-      price: formatPrice(notification.price / 100),
+      price: formatPrice(notification.price),
     });
   } catch (error) {
     console.error('Error removing notification:', error);
@@ -135,10 +135,8 @@ notificationController.command('notifications', async ctx => {
     const notificationList = notifications
       .map((notification: Notification, index: number) => {
         const currentPrice = priceMap.get(notification.ticker);
-        const currentPriceText = currentPrice
-          ? formatPrice(currentPrice / 100)
-          : ctx.i18n.t('notification.list.no_price');
-        const targetPrice = formatPrice(notification.price / 100);
+        const currentPriceText = currentPrice ? formatPrice(currentPrice) : ctx.i18n.t('notification.list.no_price');
+        const targetPrice = formatPrice(notification.price);
 
         return ctx.i18n.t('notification.list.item', {
           index: index + 1,

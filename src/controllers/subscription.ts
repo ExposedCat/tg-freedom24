@@ -100,7 +100,7 @@ subscriptionController.command('subs', async ctx => {
     const subscriptionList = subscriptions
       .map((ticker: string, index: number) => {
         const price = priceMap.get(ticker);
-        const priceText = price ? formatPrice(price / 100) : ctx.i18n.t('subscription.list.no_price');
+        const priceText = price ? formatPrice(price) : ctx.i18n.t('subscription.list.no_price');
         return ctx.i18n.t('subscription.list.item', {
           index: index + 1,
           ticker,

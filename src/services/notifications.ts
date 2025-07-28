@@ -126,8 +126,8 @@ function createNotificationMessage(
   notificationIndex: number,
 ): string {
   const direction = notification.direction === '>' ? 'above' : 'below';
-  const targetPrice = (notification.price / 100).toFixed(1);
-  const actualPrice = (currentPrice / 100).toFixed(1);
+  const targetPrice = notification.price.toFixed(1);
+  const actualPrice = currentPrice.toFixed(1);
 
   return `🔔 ${notification.ticker} is now ${direction} $${targetPrice}!\nCurrent price: $${actualPrice}\n\nRemove this notification: /n_${notificationIndex}`;
 }
