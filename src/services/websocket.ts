@@ -215,6 +215,10 @@ export class TradenetWebSocket {
   private async savePriceUpdate(name: string, price: number): Promise<void> {
     if (!this.database) return;
 
+    if (price === 0) {
+      return;
+    }
+
     try {
       await this.database.tickers.updateOne({ name }, { $set: { name, lastPrice: price } }, { upsert: true });
     } catch (error) {
