@@ -160,7 +160,7 @@ export async function fetchPortfolio(
     const positions = response.result.ps.pos.map(pos => {
       const dbPrice = dbPrices.get(pos.i);
       const baseTickerPrice = dbPrices.get(pos.base_contract_code) ?? 0;
-      const currentPrice = dbPrice ?? pos.market_value;
+      const currentPrice = (dbPrice ?? pos.market_value * pos.face_val_a) * pos.q;
       const usingMarketPrice = dbPrice === undefined;
       const startDate = orderDates.get(pos.i) || new Date(0);
 
@@ -168,7 +168,7 @@ export async function fetchPortfolio(
         name: pos.base_contract_code,
         startDate,
         endDate: new Date(pos.maturity_d),
-        startPrice: pos.price_a * 100,
+        startPrice: pos.price_a * pos.face_val_a * pos.q,
         currentPrice,
         baseTickerPrice,
         strike: Number(pos.i.split('C').at(-1)),
