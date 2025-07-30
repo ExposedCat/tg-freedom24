@@ -87,5 +87,9 @@
       "total_line": "${state} ${profit} ${percentage}"
     },
     "full": "${summary}\n———\n${totals}"
+  },
+  "meme": {
+    "usage": "Please provide top and bottom text for the meme separated by /:\n\n<code>/meme [top text] / [bottom text]</code>\n\nExample: <code>/meme Hello World / This is awesome</code>",
+    "error": "❌ Failed to generate meme. Please try again later."
   }
 }

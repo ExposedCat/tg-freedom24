@@ -103,7 +103,9 @@ export class TradenetWebSocket {
               resolve(true);
             } else if (type === 'q' && payload.c && payload.bbp !== undefined) {
               const ticker = payload.c;
-              const multiplier = payload.type === 4 ? payload.contract_multiplier || 1 : 1;
+
+              const isOption = ticker.startsWith('+');
+              const multiplier = isOption ? payload.contract_multiplier || 100 : 1;
               const price = payload.bbp * multiplier;
               if (price > 0) {
                 await this.savePriceUpdate(ticker, price);
