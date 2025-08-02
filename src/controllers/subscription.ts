@@ -1,6 +1,6 @@
 import { Composer } from 'grammy';
 import type { CustomContext } from '../types/context.js';
-import { TradenetWebSocket } from '../services/websocket.js';
+import { TradenetWebSocket } from '../services/freedom/realtime.js';
 
 function formatPrice(amount: number): string {
   return `$${amount.toFixed(1)}`;

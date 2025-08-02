@@ -7,11 +7,12 @@ import { subscriptionController } from '../controllers/subscription.js';
 import { notificationController } from '../controllers/notification.js';
 import { historyController } from '../controllers/history.js';
 import { memeController } from '../controllers/meme.js';
+import { optionsController } from '../controllers/options.js';
 import { resolvePath } from '../helpers/resolve-path.js';
 import { createReplyWithTextFunc } from '../services/context.js';
 import { getUser } from '../services/user.js';
 import { getChat } from '../services/chat.js';
-import { TradenetWebSocket } from '../services/websocket.js';
+import { TradenetWebSocket } from '../services/freedom/realtime.js';
 import { NotificationHandler } from '../services/notification-handler.js';
 import type { Database } from '../types/database.js';
 import type { Bot } from '../types/telegram.js';
@@ -58,6 +59,7 @@ function setupControllers(bot: Bot) {
   bot.use(notificationController);
   bot.use(historyController);
   bot.use(memeController);
+  bot.use(optionsController);
 }
 
 export async function startBot(database: Database) {

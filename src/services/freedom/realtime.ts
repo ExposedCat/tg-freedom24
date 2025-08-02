@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
-import type { Database } from '../types/database.js';
-import { createHmac } from 'node:crypto';
+import type { Database } from '../../types/database.js';
+import { makeApiRequest } from './api.js';
 
 type PriceUpdateCallback = (ticker: string, price: number) => Promise<void>;
 
@@ -68,6 +68,13 @@ export class TradenetWebSocket {
     return TradenetWebSocket.instance?.isConnectedInstance() ?? false;
   }
 
+  static async fetchOptionPrices(optionTickers: string[]): Promise<Map<string, number>> {
+    if (!TradenetWebSocket.instance || !TradenetWebSocket.instance.isAuthenticated) {
+      return new Map();
+    }
+    return TradenetWebSocket.instance.fetchOptionPricesInstance(optionTickers);
+  }
+
   private async connectInstance(sid: string): Promise<boolean> {
     return new Promise(resolve => {
       this.adminSID = sid;
@@ -82,10 +89,6 @@ export class TradenetWebSocket {
         }
         resolve(false);
       }, 10000);
-
-      this.ws.on('open', () => {
-        console.log('[WS] Connected');
-      });
 
       this.ws.on('message', async data => {
         try {
@@ -124,8 +127,7 @@ export class TradenetWebSocket {
         resolve(false);
       });
 
-      this.ws.on('close', code => {
-        console.log(`[WS] Disconnected (${code})`);
+      this.ws.on('close', () => {
         this.isAuthenticated = false;
         clearTimeout(timeout);
 
@@ -186,7 +188,6 @@ export class TradenetWebSocket {
 
     const allSubscriptions = new Set<string>();
 
-    // Get portfolio subscriptions
     try {
       const users = await this.database.user.find({}).toArray();
       for (const user of users) {
@@ -195,27 +196,11 @@ export class TradenetWebSocket {
             continue;
           }
 
-          const cmd = 'getPositionJson';
-          const nonce = Date.now().toString();
-          const params = new URLSearchParams({ apiKey: user.apiKey, cmd, nonce }).toString();
-          const signature = createHmac('sha256', user.secretKey).update(params).digest('hex');
+          const response = await makeApiRequest(user.apiKey, user.secretKey, 'getPositionJson');
 
-          const res = await fetch(`https://tradernet.com/api/v2/cmd/${cmd}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'X-NtApi-PublicKey': user.apiKey,
-              'X-NtApi-Sig': signature,
-            },
-            body: params,
-          });
-
-          if (res.ok) {
-            const response = await res.json();
-            if (response.result?.ps?.pos) {
-              for (const pos of response.result.ps.pos) {
-                allSubscriptions.add(pos.i);
-              }
+          if (response?.result?.ps?.pos) {
+            for (const pos of response.result.ps.pos) {
+              allSubscriptions.add(pos.i);
             }
           }
         } catch (error) {
@@ -226,17 +211,14 @@ export class TradenetWebSocket {
       console.error('[WS] Error getting portfolio subscriptions:', error);
     }
 
-    // Get notification and subscription tickers
     try {
       const chats = await this.database.chat.find({}).toArray();
       for (const chat of chats) {
-        // Add subscription tickers
         if (chat.subscriptions && Array.isArray(chat.subscriptions)) {
           for (const ticker of chat.subscriptions) {
             allSubscriptions.add(ticker);
           }
         }
-        // Add notification tickers
         if (chat.notifications && Array.isArray(chat.notifications)) {
           for (const notification of chat.notifications) {
             allSubscriptions.add(notification.ticker);
@@ -247,16 +229,13 @@ export class TradenetWebSocket {
       console.error('[WS] Error getting chat subscriptions:', error);
     }
 
-    // Send portfolio subscription first if we have portfolio data
     if (allSubscriptions.size > 0) {
-      // Check if we have any portfolio subscriptions by looking for option-like names
       const hasPortfolioSubs = Array.from(allSubscriptions).some(sub => sub.includes('C') || sub.includes('P'));
       if (hasPortfolioSubs) {
         this.ws.send(JSON.stringify(['portfolio']));
       }
     }
 
-    // Update desired subscriptions and send quotes message
     this.desiredSubscriptions = allSubscriptions;
     if (allSubscriptions.size > 0) {
       const message = JSON.stringify(['quotes', Array.from(allSubscriptions)]);
@@ -265,7 +244,6 @@ export class TradenetWebSocket {
   }
 
   private async initializeAllSubscriptions(): Promise<void> {
-    // Use the same logic as refreshSubscriptions
     await this.refreshSubscriptions();
   }
 
@@ -274,12 +252,10 @@ export class TradenetWebSocket {
       return;
     }
 
-    // Add all options to desired subscriptions
     for (const option of optionNames) {
       this.desiredSubscriptions.add(option);
     }
 
-    // Send ALL desired subscriptions (since quotes message replaces all)
     if (this.desiredSubscriptions.size > 0) {
       const message = JSON.stringify(['quotes', Array.from(this.desiredSubscriptions)]);
       this.ws.send(message);
@@ -314,5 +290,55 @@ export class TradenetWebSocket {
         console.error(`[WS] Error in price update callback for ${ticker}:`, error);
       }
     }
+  }
+
+  private async fetchOptionPricesInstance(optionTickers: string[]): Promise<Map<string, number>> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) {
+      return new Map();
+    }
+
+    const originalSubscriptions = new Set(this.desiredSubscriptions);
+    const tempSubscriptions = new Set([...originalSubscriptions, ...optionTickers]);
+
+    const priceMap = new Map<string, number>();
+    const receivedTickers = new Set<string>();
+
+    const priceHandler = async (ticker: string, price: number): Promise<void> => {
+      if (optionTickers.includes(ticker)) {
+        priceMap.set(ticker, price);
+        receivedTickers.add(ticker);
+      }
+    };
+
+    this.priceUpdateCallbacks.push(priceHandler);
+
+    try {
+      if (tempSubscriptions.size > 0) {
+        const message = JSON.stringify(['quotes', Array.from(tempSubscriptions)]);
+        this.ws.send(message);
+      }
+
+      await new Promise<void>(resolve => {
+        const checkComplete = () => {
+          if (receivedTickers.size === optionTickers.length || receivedTickers.size > 0) {
+            resolve();
+          } else {
+            setTimeout(checkComplete, 100);
+          }
+        };
+        setTimeout(checkComplete, 500);
+        setTimeout(resolve, 3000);
+      });
+    } finally {
+      this.priceUpdateCallbacks = this.priceUpdateCallbacks.filter(cb => cb !== priceHandler);
+
+      this.desiredSubscriptions = originalSubscriptions;
+      if (originalSubscriptions.size > 0) {
+        const restoreMessage = JSON.stringify(['quotes', Array.from(originalSubscriptions)]);
+        this.ws.send(restoreMessage);
+      }
+    }
+
+    return priceMap;
   }
 }

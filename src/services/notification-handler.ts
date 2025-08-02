@@ -1,6 +1,6 @@
 import type { Database } from '../types/database.js';
 import type { Bot } from '../types/telegram.js';
-import { TradenetWebSocket } from './websocket.js';
+import { TradenetWebSocket } from './freedom/realtime.js';
 import { checkNotifications, subscribeToNotificationTickers } from './notifications.js';
 
 export class NotificationHandler {

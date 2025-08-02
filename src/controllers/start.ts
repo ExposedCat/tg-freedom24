@@ -2,7 +2,7 @@ import { Composer } from 'grammy';
 
 import type { CustomContext } from '../types/context.js';
 import { createUser, updateUser, getUser } from '../services/user.js';
-import { TradenetWebSocket } from '../services/websocket.js';
+import { TradenetWebSocket } from '../services/freedom/realtime.js';
 
 export const startController = new Composer<CustomContext>();
 startController.command('start', async ctx => {

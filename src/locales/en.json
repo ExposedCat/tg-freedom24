@@ -91,5 +91,18 @@
   "meme": {
     "usage": "Please provide top and bottom text for the meme separated by /:\n\n<code>/meme [top text] / [bottom text]</code>\n\nExample: <code>/meme Hello World / This is awesome</code>",
     "error": "❌ Failed to generate meme. Please try again later."
+  },
+  "options": {
+    "usage": "❌ Please provide a ticker symbol.\n\nUsage: /options TICKER\nExample: /options AAPL.US",
+    "invalid_ticker": "❌ Invalid ticker symbol provided.",
+    "fetching": "🔍 Fetching options for ${ticker}...",
+    "fetching_prices": "💰 Fetching real-time prices...",
+    "error": "❌ An error occurred while fetching options for ${ticker}. Please try again later.",
+    "fetch_failed": "❌ Failed to fetch options for ${ticker}. Please check the ticker symbol and try again.",
+    "no_data": "❌ No options data found for ${ticker}.",
+    "no_options": "❌ No options found for ${ticker}.",
+    "title": "📈 *Top 10 Options for ${ticker}*\n\n",
+    "item": "${index}. ${expireDate} -> ${strikePrice} ${price}\n",
+    "footer": "\n🔢 Total options found: ${total}\n📝 Full data logged to console"
   }
 }

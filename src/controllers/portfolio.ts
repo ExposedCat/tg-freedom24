@@ -1,8 +1,8 @@
 import { Composer } from 'grammy';
 
 import type { CustomContext } from '../types/context.js';
-import { fetchPortfolio, type Option } from '../services/freedom/api.js';
-import { TradenetWebSocket } from '../services/websocket.js';
+import { fetchPortfolio, type Option } from '../services/freedom/portfolio.js';
+import { TradenetWebSocket } from '../services/freedom/realtime.js';
 import {
   formatCurrency,
   formatPercentage,

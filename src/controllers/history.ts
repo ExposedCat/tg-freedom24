@@ -3,7 +3,7 @@ import { Composer } from 'grammy';
 import type { CustomContext } from '../types/context.js';
 import { formatCurrency, formatPercentage } from '../services/formatters.js';
 import { getPrices } from '../services/tickers.js';
-import { fetchOrdersHistory } from '../services/freedom/api.js';
+import { fetchOrdersHistory } from '../services/freedom/orders.js';
 import { getPortfolioState, validateUser } from '../services/portfolio-utils.js';
 
 type Trade = {
