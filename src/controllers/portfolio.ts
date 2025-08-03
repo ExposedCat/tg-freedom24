@@ -1,41 +1,11 @@
 import { Composer } from 'grammy';
 
-import type { CustomContext } from '../types/context.js';
-import { fetchPortfolio, type Option } from '../services/freedom/portfolio.js';
-import { TradenetWebSocket } from '../services/freedom/realtime.js';
-import {
-  formatCurrency,
-  formatPercentage,
-  formatTimeLeft,
-  formatTimeFromNow,
-  getMarketState,
-} from '../services/formatters.js';
+import { fetchPortfolio } from '../modules/freedom/portfolio.js';
+import { TradenetWebSocket } from '../modules/freedom/realtime.js';
+import { processPosition } from '../modules/portfolio/service.js';
+import { formatCurrency, getMarketState } from '../services/formatters.js';
 import { getPortfolioState, validateUser } from '../services/portfolio-utils.js';
-
-function processPosition(position: Option) {
-  const profit = position.currentPrice - position.startPrice;
-  const percentage = position.startPrice !== 0 ? (profit / position.startPrice) * 100 : 0;
-  const timeLeft = formatTimeLeft(position.startDate, position.endDate);
-  const timeFromNow = formatTimeFromNow(position.endDate);
-  const strikeChange = position.baseTickerPrice - position.strike;
-
-  return {
-    state: profit > 0 ? 'profit' : profit < 0 ? 'loss' : 'zero',
-    name: position.name,
-    change: formatCurrency(profit),
-    percent: formatPercentage(percentage),
-    startPrice: position.startPrice.toFixed(0),
-    currentPrice: position.currentPrice.toFixed(0),
-    baseTickerPrice: position.baseTickerPrice.toFixed(0),
-    startDate: position.startDate.toLocaleDateString(),
-    endDate: position.endDate.toLocaleDateString(),
-    timeLeft,
-    timeFromNow,
-    strike: formatCurrency(position.strike),
-    strikeChange: formatCurrency(strikeChange),
-    usingMarketPrice: position.usingMarketPrice,
-  };
-}
+import type { CustomContext } from '../types/context.js';
 
 export const portfolioController = new Composer<CustomContext>();
 portfolioController.command('portfolio', async ctx => {

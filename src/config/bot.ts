@@ -1,18 +1,18 @@
 import type { I18n } from '@grammyjs/i18n/dist/source/i18n.js';
 import { Bot as TelegramBot, session } from 'grammy';
 
-import { startController } from '../controllers/start.js';
-import { portfolioController } from '../controllers/portfolio.js';
-import { subscriptionController } from '../controllers/subscription.js';
-import { notificationController } from '../controllers/notification.js';
 import { historyController } from '../controllers/history.js';
 import { memeController } from '../controllers/meme.js';
+import { notificationController } from '../controllers/notification.js';
 import { optionsController } from '../controllers/options.js';
+import { portfolioController } from '../controllers/portfolio.js';
+import { startController } from '../controllers/start.js';
+import { subscriptionController } from '../controllers/subscription.js';
 import { resolvePath } from '../helpers/resolve-path.js';
+import { TradenetWebSocket } from '../modules/freedom/realtime.js';
+import { findChatById } from '../modules/users/data.js';
+import { getUser } from '../modules/users/service.js';
 import { createReplyWithTextFunc } from '../services/context.js';
-import { getUser } from '../services/user.js';
-import { getChat } from '../services/chat.js';
-import { TradenetWebSocket } from '../services/freedom/realtime.js';
 import { NotificationHandler } from '../services/notification-handler.js';
 import type { Database } from '../types/database.js';
 import type { Bot } from '../types/telegram.js';
@@ -28,14 +28,8 @@ function extendContext(bot: Bot, database: Database) {
     ctx.db = database;
 
     ctx.dbEntities = {
-      user: await getUser({
-        db: database,
-        userId: ctx.from.id,
-      }),
-      chat: await getChat({
-        db: database,
-        chatId: ctx.chat.id,
-      }),
+      user: await getUser(database, ctx.from.id),
+      chat: await findChatById(database, ctx.chat.id),
     };
 
     await next();
@@ -72,7 +66,7 @@ export async function startBot(database: Database) {
 
   const adminId = process.env.ADMIN_ID;
   if (adminId) {
-    const adminUser = await getUser({ db: database, userId: Number(adminId) });
+    const adminUser = await getUser(database, Number(adminId));
     if (adminUser && adminUser.sid) {
       await TradenetWebSocket.connect(adminUser.sid);
     }

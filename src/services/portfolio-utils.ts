@@ -1,5 +1,5 @@
+import { getUser } from '../modules/users/service.js';
 import type { CustomContext } from '../types/context.js';
-import { getUser } from './user.js';
 
 export function getPortfolioState(percentage: number): string {
   if (percentage === 0) return 'nothing';
@@ -20,10 +20,7 @@ export async function validateUser(ctx: CustomContext): Promise<{
 
   if (ctx.message?.reply_to_message?.from?.id) {
     const repliedUserId = ctx.message.reply_to_message.from.id;
-    targetUser = await getUser({
-      db: ctx.db,
-      userId: repliedUserId,
-    });
+    targetUser = await getUser(ctx.db, repliedUserId);
   }
 
   if (!targetUser || !targetUser.apiKey || !targetUser.secretKey) {

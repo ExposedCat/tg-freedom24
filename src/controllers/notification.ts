@@ -1,11 +1,13 @@
 import { Composer } from 'grammy';
+import { TradenetWebSocket } from '../modules/freedom/realtime.js';
+import {
+  createNotification,
+  formatNotificationList,
+  listNotifications,
+  parseNotificationCondition,
+  removeNotification,
+} from '../modules/notifications/service.js';
 import type { CustomContext } from '../types/context.js';
-import type { Notification } from '../types/database.js';
-import { TradenetWebSocket } from '../services/freedom/realtime.js';
-
-function formatPrice(amount: number): string {
-  return `$${amount.toFixed(1)}`;
-}
 
 export const notificationController = new Composer<CustomContext>();
 
@@ -28,53 +30,24 @@ notificationController.command('notify', async ctx => {
   const [ticker, priceCondition] = args;
   const tickerUpper = ticker.toUpperCase();
 
-  const match = priceCondition.match(/^([<>])(\d+(?:\.\d+)?)$/);
-  if (!match) {
+  const condition = parseNotificationCondition(priceCondition);
+  if (!condition) {
     await ctx.text('notification.setup.invalid_format');
     return;
   }
 
-  const direction = match[1] as '>' | '<';
-  const price = parseFloat(match[2]);
+  const result = await createNotification(ctx.db, ctx.chat.id, tickerUpper, condition);
 
-  const currentNotifications = ctx.dbEntities.chat?.notifications || [];
-
-  const existingIndex = currentNotifications.findIndex(
-    n => n.ticker === tickerUpper && n.direction === direction && n.price === price,
-  );
-
-  if (existingIndex !== -1) {
-    const escapedCondition = priceCondition.replace(/</g, '&lt;').replace(/>/g, '≥');
-    await ctx.text('notification.setup.already_exists', { ticker: tickerUpper, condition: escapedCondition });
-    return;
-  }
-
-  const newNotification: Notification = {
-    ticker: tickerUpper,
-    direction,
-    price,
-    lastNotified: null,
-    bounceDetected: false,
-  };
-
-  const updatedNotifications = [...currentNotifications, newNotification];
-
-  try {
-    await ctx.db.chat.updateOne(
-      { chatId: ctx.chat.id },
-      { $set: { notifications: updatedNotifications } },
-      { upsert: true },
-    );
-
-    await TradenetWebSocket.refreshAllSubscriptions();
-
+  if (result.success) {
     await ctx.text('notification.setup.success', {
       ticker: tickerUpper,
-      direction: direction === '>' ? '≥' : '&lt;',
-      price: formatPrice(price),
+      direction: condition.direction === '>' ? '≥' : '&lt;',
+      price: condition.price.toFixed(1),
     });
-  } catch (error) {
-    console.error('Error setting up notification:', error);
+  } else if (result.error?.includes('already exists')) {
+    const escapedCondition = priceCondition.replace(/</g, '&lt;').replace(/>/g, '≥');
+    await ctx.text('notification.setup.already_exists', { ticker: tickerUpper, condition: escapedCondition });
+  } else {
     await ctx.text('notification.setup.error', { ticker: tickerUpper });
   }
 });
@@ -88,29 +61,17 @@ notificationController.hears(/^\/n_(\d+)(?:@\w+)?$/, async ctx => {
   if (!match) return;
 
   const index = parseInt(match[1], 10) - 1;
-  const currentNotifications = ctx.dbEntities.chat?.notifications || [];
 
-  if (index < 0 || index >= currentNotifications.length) {
-    await ctx.text('notification.remove.invalid');
-    return;
-  }
+  const result = await removeNotification(ctx.db, ctx.chat.id, index);
 
-  const notification = currentNotifications[index];
-  const updatedNotifications = currentNotifications.filter((_: Notification, i: number) => i !== index);
-
-  try {
-    await ctx.db.chat.updateOne({ chatId: ctx.chat.id }, { $set: { notifications: updatedNotifications } });
-
-    await TradenetWebSocket.refreshAllSubscriptions();
-
+  if (result.success) {
     await ctx.text('notification.remove.success', {
-      ticker: notification.ticker,
-      direction: notification.direction === '>' ? '≥' : '&lt;',
-      price: formatPrice(notification.price),
+      ticker: result.message?.split(' ')[3] || '',
+      direction: result.message?.includes('≥') ? '≥' : '&lt;',
+      price: result.message?.match(/\$[\d.]+/)?.[0] || '',
     });
-  } catch (error) {
-    console.error('Error removing notification:', error);
-    await ctx.text('notification.remove.error');
+  } else {
+    await ctx.text('notification.remove.invalid');
   }
 });
 
@@ -119,7 +80,7 @@ notificationController.command('notifications', async ctx => {
     return;
   }
 
-  const notifications = ctx.dbEntities.chat?.notifications || [];
+  const { notifications, priceMap } = await listNotifications(ctx.db, ctx.chat.id);
 
   if (notifications.length === 0) {
     await ctx.text('notification.list.empty');
@@ -127,26 +88,7 @@ notificationController.command('notifications', async ctx => {
   }
 
   try {
-    const tickers = [...new Set(notifications.map(n => n.ticker))];
-    const tickerPrices = await ctx.db.tickers.find({ name: { $in: tickers } }).toArray();
-
-    const priceMap = new Map(tickerPrices.map(t => [t.name, t.lastPrice]));
-
-    const notificationList = notifications
-      .map((notification: Notification, index: number) => {
-        const currentPrice = priceMap.get(notification.ticker);
-        const currentPriceText = currentPrice ? formatPrice(currentPrice) : ctx.i18n.t('notification.list.no_price');
-        const targetPrice = formatPrice(notification.price);
-
-        return ctx.i18n.t('notification.list.item', {
-          index: index + 1,
-          ticker: notification.ticker,
-          direction: notification.direction === '>' ? '≥' : '&lt;',
-          targetPrice,
-          currentPrice: currentPriceText,
-        });
-      })
-      .join('\n');
+    const notificationList = formatNotificationList(notifications, priceMap, ctx.i18n.t.bind(ctx.i18n));
 
     await ctx.text('notification.list.full', {
       notifications: notificationList,

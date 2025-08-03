@@ -1,9 +1,9 @@
-import type { Freedom24PortfolioResponse } from './types.js';
 import type { Database } from '../../types/database.js';
-import { TradenetWebSocket } from './realtime.js';
-import { getPrices } from '../tickers.js';
+import { getTickerPrices } from '../market/service.js';
 import { makeApiRequest } from './api.js';
 import { fetchOrdersHistory } from './orders.js';
+import { TradenetWebSocket } from './realtime.js';
+import type { Freedom24PortfolioResponse } from './types.js';
 
 export type Option = {
   name: string;
@@ -63,7 +63,7 @@ export async function fetchPortfolio(
     const baseTickerNames = response.result.ps.pos.map(pos => pos.base_contract_code);
     const allTickerNames = [...tickerNames, ...baseTickerNames];
 
-    const dbPrices = await getPrices(database, allTickerNames);
+    const dbPrices = await getTickerPrices(database, allTickerNames);
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -85,7 +85,7 @@ export async function fetchPortfolio(
     const positions = response.result.ps.pos.map(pos => {
       const dbPrice = dbPrices.get(pos.i);
       const baseTickerPrice = dbPrices.get(pos.base_contract_code) ?? 0;
-      const currentPrice = (dbPrice ?? pos.market_value * pos.face_val_a) * pos.q;
+      const currentPrice = (dbPrice ?? pos.mkt_price * pos.face_val_a) * pos.q;
       const usingMarketPrice = dbPrice === undefined;
       const startDate = orderDates.get(pos.i) || new Date(0);
 

@@ -1,8 +1,8 @@
 import { Composer } from 'grammy';
 
+import { TradenetWebSocket } from '../modules/freedom/realtime.js';
+import { createOrUpdateUser, getUser } from '../modules/users/service.js';
 import type { CustomContext } from '../types/context.js';
-import { createUser, updateUser, getUser } from '../services/user.js';
-import { TradenetWebSocket } from '../services/freedom/realtime.js';
 
 export const startController = new Composer<CustomContext>();
 startController.command('start', async ctx => {
@@ -19,28 +19,14 @@ startController.command('start', async ctx => {
 
   const [apiKey, secretKey, login, password] = params;
 
-  let result;
-  if (ctx.dbEntities.user) {
-    result = await updateUser({
-      db: ctx.db,
-      userId: ctx.from.id,
-      apiKey,
-      secretKey,
-      login,
-      password,
-    });
-  } else {
-    result = await createUser({
-      db: ctx.db,
-      userId: ctx.from.id,
-      apiKey,
-      secretKey,
-      login,
-      password,
-    });
-  }
+  const result = await createOrUpdateUser(ctx.db, ctx.from.id, {
+    apiKey,
+    secretKey,
+    login,
+    password,
+  });
 
-  if (result.error) {
+  if (!result.success) {
     await ctx.text('start');
     return;
   }
@@ -49,7 +35,7 @@ startController.command('start', async ctx => {
   if (adminId && ctx.from.id === Number(adminId)) {
     await TradenetWebSocket.disconnect();
 
-    const updatedUser = await getUser({ db: ctx.db, userId: ctx.from.id });
+    const updatedUser = await getUser(ctx.db, ctx.from.id);
     if (updatedUser && updatedUser.sid) {
       await TradenetWebSocket.connect(updatedUser.sid);
     }

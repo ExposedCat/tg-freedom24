@@ -1,7 +1,7 @@
+import { TradenetWebSocket } from '../modules/freedom/realtime.js';
+import { getAllNotificationTickers, processNotifications } from '../modules/notifications/service.js';
 import type { Database } from '../types/database.js';
 import type { Bot } from '../types/telegram.js';
-import { TradenetWebSocket } from './freedom/realtime.js';
-import { checkNotifications, subscribeToNotificationTickers } from './notifications.js';
 
 export class NotificationHandler {
   private bot: Bot;
@@ -19,7 +19,7 @@ export class NotificationHandler {
 
   private async handlePriceUpdate(ticker: string, price: number): Promise<void> {
     try {
-      const results = await checkNotifications(this.database, ticker, price);
+      const results = await processNotifications(this.database, ticker, price);
 
       for (const result of results) {
         await this.sendMessage(result.chatId, result.message);
@@ -41,7 +41,7 @@ export class NotificationHandler {
 
   async subscribeToNotificationTickers(): Promise<void> {
     try {
-      const tickers = await subscribeToNotificationTickers(this.database);
+      const tickers = await getAllNotificationTickers(this.database);
 
       for (const ticker of tickers) {
         await TradenetWebSocket.subscribeToUserTicker(ticker);

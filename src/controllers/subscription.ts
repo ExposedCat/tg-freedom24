@@ -1,10 +1,12 @@
 import { Composer } from 'grammy';
+import { TradenetWebSocket } from '../modules/freedom/realtime.js';
+import {
+  addSubscription,
+  formatSubscriptionList,
+  listSubscriptions,
+  removeSubscription,
+} from '../modules/trading/service.js';
 import type { CustomContext } from '../types/context.js';
-import { TradenetWebSocket } from '../services/freedom/realtime.js';
-
-function formatPrice(amount: number): string {
-  return `$${amount.toFixed(1)}`;
-}
 
 export const subscriptionController = new Composer<CustomContext>();
 
@@ -20,27 +22,13 @@ subscriptionController.command('subscribe', async ctx => {
 
   const ticker = ctx.match.trim().toUpperCase();
 
-  const currentSubscriptions = ctx.dbEntities.chat?.subscriptions || [];
+  const result = await addSubscription(ctx.db, ctx.chat.id, ticker);
 
-  if (currentSubscriptions.includes(ticker)) {
-    await ctx.text('subscription.subscribe.already', { ticker });
-    return;
-  }
-
-  const updatedSubscriptions = [...currentSubscriptions, ticker];
-
-  try {
-    await ctx.db.chat.updateOne(
-      { chatId: ctx.chat.id },
-      { $set: { subscriptions: updatedSubscriptions } },
-      { upsert: true },
-    );
-
-    await TradenetWebSocket.refreshAllSubscriptions();
-
+  if (result.success) {
     await ctx.text('subscription.subscribe.success', { ticker });
-  } catch (error) {
-    console.error('Error subscribing to ticker:', error);
+  } else if (result.error?.includes('Already subscribed')) {
+    await ctx.text('subscription.subscribe.already', { ticker });
+  } else {
     await ctx.text('subscription.subscribe.error', { ticker });
   }
 });
@@ -54,25 +42,14 @@ subscriptionController.hears(/^\/u_(\d+)(?:@\w+)?$/, async ctx => {
   if (!match) return;
 
   const index = parseInt(match[1], 10) - 1;
-  const currentSubscriptions = ctx.dbEntities.chat?.subscriptions || [];
 
-  if (index < 0 || index >= currentSubscriptions.length) {
-    await ctx.text('subscription.unsubscribe.invalid');
-    return;
-  }
+  const result = await removeSubscription(ctx.db, ctx.chat.id, index);
 
-  const ticker = currentSubscriptions[index];
-  const updatedSubscriptions = currentSubscriptions.filter((_: string, i: number) => i !== index);
-
-  try {
-    await ctx.db.chat.updateOne({ chatId: ctx.chat.id }, { $set: { subscriptions: updatedSubscriptions } });
-
-    await TradenetWebSocket.refreshAllSubscriptions();
-
+  if (result.success) {
+    const ticker = result.message?.split(' ').pop() || '';
     await ctx.text('subscription.unsubscribe.success', { ticker });
-  } catch (error) {
-    console.error('Error unsubscribing from ticker:', error);
-    await ctx.text('subscription.unsubscribe.error', { ticker });
+  } else {
+    await ctx.text('subscription.unsubscribe.invalid');
   }
 });
 
@@ -81,7 +58,7 @@ subscriptionController.command('subs', async ctx => {
     return;
   }
 
-  const subscriptions = ctx.dbEntities.chat?.subscriptions || [];
+  const { subscriptions, priceMap } = await listSubscriptions(ctx.db, ctx.chat.id);
 
   if (subscriptions.length === 0) {
     await ctx.text('subscription.list.empty');
@@ -89,25 +66,7 @@ subscriptionController.command('subs', async ctx => {
   }
 
   try {
-    const tickers = await ctx.db.tickers
-      .find({
-        name: { $in: subscriptions },
-      })
-      .toArray();
-
-    const priceMap = new Map(tickers.map(t => [t.name, t.lastPrice]));
-
-    const subscriptionList = subscriptions
-      .map((ticker: string, index: number) => {
-        const price = priceMap.get(ticker);
-        const priceText = price ? formatPrice(price) : ctx.i18n.t('subscription.list.no_price');
-        return ctx.i18n.t('subscription.list.item', {
-          index: index + 1,
-          ticker,
-          price: priceText,
-        });
-      })
-      .join('\n');
+    const subscriptionList = formatSubscriptionList(subscriptions, priceMap, ctx.i18n.t.bind(ctx.i18n));
 
     await ctx.text('subscription.list.full', {
       subscriptions: subscriptionList,
