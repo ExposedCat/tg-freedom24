@@ -355,10 +355,14 @@ export async function enrichOptionsWithPrices(options: ProcessedOption[]): Promi
   priceMap: Map<string, number>;
 }> {
   const optionTickers = options.map(option => option.ticker);
-  let priceMap = new Map<string, number>();
+  const priceMap = new Map<string, number>();
 
   if (TradenetWebSocket.isConnected()) {
-    priceMap = await TradenetWebSocket.fetchOptionPrices(optionTickers);
+    const rawPriceMap = await TradenetWebSocket.fetchOptionPrices(optionTickers);
+
+    for (const [ticker, price] of rawPriceMap.entries()) {
+      priceMap.set(ticker, price);
+    }
   }
 
   const enrichedOptions = options.map(option => ({
@@ -374,6 +378,7 @@ export function formatOptionsMessage(
   optionsByDate: OptionsGroupedByDate,
   priceMap: Map<string, number>,
   totalOptionsCount: number,
+  currentPrice: number | undefined,
   i18nT: (key: string, params?: any) => string,
 ): string {
   const sortedDates = Array.from(optionsByDate.keys())
@@ -388,23 +393,53 @@ export function formatOptionsMessage(
     if (dateOptions.length === 1) {
       const option = dateOptions[0];
       const strikePrice = option.strikePrice ? `$${parseFloat(option.strikePrice).toFixed(0)}` : 'N/A';
-      const price = priceMap.has(option.ticker) ? formatCurrency(priceMap.get(option.ticker)!) : '$N/A';
-
+      const price = priceMap.has(option.ticker) ? `$${priceMap.get(option.ticker)!.toFixed(2)}` : '$N/A';
       message += `${date} -> ${strikePrice} ${price}\n`;
     } else {
       message += `📅 ${date}\n`;
 
-      dateOptions
-        .sort((a, b) => parseFloat(a.strikePrice || '0') - parseFloat(b.strikePrice || '0'))
-        .slice(0, 10)
-        .forEach((option, index) => {
+      const optionsWithPrices = dateOptions.filter(
+        option => priceMap.has(option.ticker) && priceMap.get(option.ticker)! > 0,
+      );
+
+      if (optionsWithPrices.length === 0) {
+        message += `  └ No options with valid prices\n`;
+      } else {
+        let selectedOptions: EnrichedOption[];
+
+        if (currentPrice !== undefined) {
+          const allOptions = optionsWithPrices
+            .map(option => ({
+              ...option,
+              strike: parseFloat(option.strikePrice || '0'),
+            }))
+            .filter(option => option.strike > 0)
+            .sort((a, b) => a.strike - b.strike);
+
+          const belowCurrent = allOptions.filter(opt => opt.strike < currentPrice);
+          const atCurrent = allOptions.filter(opt => Math.abs(opt.strike - currentPrice) <= currentPrice * 0.05);
+          const aboveCurrent = allOptions.filter(opt => opt.strike > currentPrice);
+
+          const selectedBelow = belowCurrent.slice(-2);
+          const selectedAt = atCurrent.slice(0, 1);
+          const selectedAbove = aboveCurrent.slice(0, 7);
+
+          selectedOptions = [...selectedBelow, ...selectedAt, ...selectedAbove].slice(0, 10);
+        } else {
+          selectedOptions = optionsWithPrices
+            .sort((a, b) => parseFloat(a.strikePrice || '0') - parseFloat(b.strikePrice || '0'))
+            .slice(0, 10);
+        }
+
+        selectedOptions.forEach((option, index) => {
           const strikePrice = option.strikePrice ? `$${parseFloat(option.strikePrice).toFixed(0)}` : 'N/A';
-          const price = priceMap.has(option.ticker) ? formatCurrency(priceMap.get(option.ticker)!) : '$N/A';
-          const isLast = index === Math.min(dateOptions.length, 10) - 1;
+          const price = priceMap.has(option.ticker) ? `$${priceMap.get(option.ticker)!.toFixed(2)}` : '$N/A';
+          const isLast = index === selectedOptions.length - 1;
           const symbol = isLast ? '└' : '├';
 
           message += `  ${symbol} ${strikePrice} ${price}\n`;
         });
+      }
     }
   });
 

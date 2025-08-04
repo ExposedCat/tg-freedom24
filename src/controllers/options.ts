@@ -2,6 +2,7 @@ import { Composer } from 'grammy';
 
 import { fetchOptions } from '../modules/freedom/orders.js';
 import { TradenetWebSocket } from '../modules/freedom/realtime.js';
+import { getTickerPrices } from '../modules/market/service.js';
 import {
   enrichOptionsWithPrices,
   formatOptionsMessage,
@@ -49,6 +50,9 @@ optionsController.command('options', async ctx => {
       return;
     }
 
+    const currentPrices = await getTickerPrices(ctx.db, [ticker]);
+    const currentPrice = currentPrices.get(ticker);
+
     if (TradenetWebSocket.isConnected()) {
       await ctx.text('options.fetching_prices');
     }
@@ -56,7 +60,14 @@ optionsController.command('options', async ctx => {
     const { enrichedOptions, priceMap } = await enrichOptionsWithPrices(options);
     const optionsByDate = groupOptionsByDate(enrichedOptions);
 
-    const message = formatOptionsMessage(ticker, optionsByDate, priceMap, options.length, ctx.i18n.t.bind(ctx.i18n));
+    const message = formatOptionsMessage(
+      ticker,
+      optionsByDate,
+      priceMap,
+      options.length,
+      currentPrice,
+      ctx.i18n.t.bind(ctx.i18n),
+    );
 
     await ctx.reply(message, { parse_mode: 'Markdown' });
   } catch (error) {
