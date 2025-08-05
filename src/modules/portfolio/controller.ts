@@ -1,13 +1,14 @@
 import { Composer } from 'grammy';
-
-import { fetchPortfolio } from '../modules/freedom/portfolio.js';
-import { TradenetWebSocket } from '../modules/freedom/realtime.js';
-import { processPosition } from '../modules/portfolio/service.js';
-import { formatCurrency, getMarketState } from '../services/formatters.js';
-import { getPortfolioState, validateUser } from '../services/portfolio-utils.js';
-import type { CustomContext } from '../types/context.js';
+import { getMarketState } from './utils.js';
+import type { CustomContext } from '../telegram/context.js';
+import { validateUser } from '../user/utils.js';
+import { TradenetWebSocket } from '../freedom/realtime.js';
+import { getPortfolioState, processPosition } from './service.js';
+import { fetchPortfolio } from '../freedom/portfolio.js';
+import { formatMoneyChange } from '../utils/formatting.js';
 
 export const portfolioController = new Composer<CustomContext>();
+
 portfolioController.command('portfolio', async ctx => {
   const { isValid, targetUser } = await validateUser(ctx);
   if (!isValid || !targetUser) return;
@@ -46,7 +47,7 @@ portfolioController.command('portfolio', async ctx => {
             .join('\n\n'),
     total: ctx.i18n.t('portfolio.part.total', {
       state: ctx.i18n.t(`portfolio.icon.state.${getPortfolioState(portfolio.totalPercentage)}`),
-      total: formatCurrency(portfolio.total),
+      total: formatMoneyChange(portfolio.total),
       dataWarning,
     }),
   });

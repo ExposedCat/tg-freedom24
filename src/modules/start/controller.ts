@@ -1,8 +1,8 @@
 import { Composer } from 'grammy';
 
-import { TradenetWebSocket } from '../modules/freedom/realtime.js';
-import { createOrUpdateUser, getUser } from '../modules/users/service.js';
-import type { CustomContext } from '../types/context.js';
+import { TradenetWebSocket } from '../freedom/realtime.js';
+import { createOrUpdateUser, findUserById } from '../user/data.js';
+import type { CustomContext } from '../telegram/context.js';
 
 export const startController = new Composer<CustomContext>();
 startController.command('start', async ctx => {
@@ -35,7 +35,7 @@ startController.command('start', async ctx => {
   if (adminId && ctx.from.id === Number(adminId)) {
     await TradenetWebSocket.disconnect();
 
-    const updatedUser = await getUser(ctx.db, ctx.from.id);
+    const updatedUser = await findUserById(ctx.db, ctx.from.id);
     if (updatedUser && updatedUser.sid) {
       await TradenetWebSocket.connect(updatedUser.sid);
     }

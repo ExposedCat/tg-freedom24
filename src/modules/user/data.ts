@@ -1,5 +1,5 @@
-import type { Database, User } from '../../types/database.js';
-import { createUser as createUserData, findUserById, updateUserCredentials } from './data.js';
+import type { Database } from '../database/types.js';
+import type { User } from './types.js';
 
 export type ServiceResult<T> = {
   success: boolean;
@@ -37,8 +37,8 @@ async function authenticateWithTradernet(login: string, password: string): Promi
   }
 }
 
-export async function getUser(database: Database, userId: number): Promise<User | null> {
-  return await findUserById(database, userId);
+export async function findUserById(database: Database, userId: number): Promise<User | null> {
+  return await database.user.findOne({ userId });
 }
 
 export async function createOrUpdateUser(
@@ -53,22 +53,22 @@ export async function createOrUpdateUser(
   }
 
   const existingUser = await findUserById(database, userId);
-  const userData = {
-    userId,
-    apiKey: credentials.apiKey,
-    secretKey: credentials.secretKey,
-    sid: auth.SID!,
-  } as User;
+  const userData = { userId, apiKey: credentials.apiKey, secretKey: credentials.secretKey, sid: auth.SID! } as User;
 
   try {
     if (existingUser) {
-      await updateUserCredentials(database, userId, {
-        apiKey: credentials.apiKey,
-        secretKey: credentials.secretKey,
-        sid: auth.SID!,
-      });
+      await database.user.updateOne(
+        { userId },
+        {
+          $set: {
+            apiKey: credentials.apiKey,
+            secretKey: credentials.secretKey,
+            sid: auth.SID!,
+          },
+        },
+      );
     } else {
-      await createUserData(database, userData);
+      await database.user.insertOne(userData);
     }
 
     return { success: true, data: userData };

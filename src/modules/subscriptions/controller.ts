@@ -1,12 +1,8 @@
 import { Composer } from 'grammy';
-import { TradenetWebSocket } from '../modules/freedom/realtime.js';
-import {
-  addSubscription,
-  formatSubscriptionList,
-  listSubscriptions,
-  removeSubscription,
-} from '../modules/trading/service.js';
-import type { CustomContext } from '../types/context.js';
+import { TradenetWebSocket } from '../freedom/realtime.js';
+import { addSubscription, listSubscriptions, removeSubscription } from './service.js';
+import type { CustomContext } from '../telegram/context.js';
+import { formatPrice } from '../utils/formatting.js';
 
 export const subscriptionController = new Composer<CustomContext>();
 
@@ -66,7 +62,17 @@ subscriptionController.command('subs', async ctx => {
   }
 
   try {
-    const subscriptionList = formatSubscriptionList(subscriptions, priceMap, ctx.i18n.t.bind(ctx.i18n));
+    const subscriptionList = subscriptions
+      .map((ticker: string, index: number) => {
+        const price = priceMap.get(ticker);
+        const priceText = price ? formatPrice(price) : ctx.i18n.t('subscription.list.no_price');
+        return ctx.i18n.t('subscription.list.item', {
+          index: index + 1,
+          ticker,
+          price: priceText,
+        });
+      })
+      .join('\n');
 
     await ctx.text('subscription.list.full', {
       subscriptions: subscriptionList,

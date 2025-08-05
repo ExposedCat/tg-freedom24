@@ -1,5 +1,5 @@
-import type { Database } from '../../types/database.js';
-import { getTickerPrices } from '../market/service.js';
+import type { Database } from '../database/types.js';
+import { getTickerPrices } from '../tickers/service.js';
 import { makeApiRequest } from './api.js';
 import { fetchOrdersHistory } from './orders.js';
 import { TradenetWebSocket } from './realtime.js';

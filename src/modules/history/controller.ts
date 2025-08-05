@@ -1,16 +1,16 @@
 import { Composer } from 'grammy';
 
-import { fetchOrdersHistory } from '../modules/freedom/orders.js';
+import { fetchOrdersHistory } from '../freedom/orders.js';
 import {
   analyzePortfolioPerformance,
   calculateTradeStatistics,
   createHistoryEntries,
-  generateTotalsText,
   generateTradeSummaryText,
   processTradeHistory,
-} from '../modules/trading/service.js';
-import { validateUser } from '../services/portfolio-utils.js';
-import type { CustomContext } from '../types/context.js';
+} from './service.js';
+import { validateUser } from '../user/utils.js';
+import type { CustomContext } from '../telegram/context.js';
+import { generateTotalsText } from './formatting.js';
 
 export const historyController = new Composer<CustomContext>();
 historyController.command('history', async ctx => {

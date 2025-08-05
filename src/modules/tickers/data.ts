@@ -1,4 +1,5 @@
-import type { Database, Ticker } from '../../types/database.js';
+import type { Database } from '../database/types.js';
+import type { Ticker } from '../ticker/types.js';
 
 export async function findTickersByNames(database: Database, tickerNames: string[]): Promise<Ticker[]> {
   if (tickerNames.length === 0) {

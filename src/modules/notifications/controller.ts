@@ -1,13 +1,10 @@
 import { Composer } from 'grammy';
-import { TradenetWebSocket } from '../modules/freedom/realtime.js';
-import {
-  createNotification,
-  formatNotificationList,
-  listNotifications,
-  parseNotificationCondition,
-  removeNotification,
-} from '../modules/notifications/service.js';
-import type { CustomContext } from '../types/context.js';
+import { TradenetWebSocket } from '../freedom/realtime.js';
+import { formatPrice } from '../utils/formatting.js';
+import type { CustomContext } from '../telegram/context.js';
+import { parseNotificationCondition } from './utils.js';
+import { createNotification, removeNotification, listNotifications } from './service.js';
+import type { Notification } from '../chat/types.js';
 
 export const notificationController = new Composer<CustomContext>();
 
@@ -36,7 +33,13 @@ notificationController.command('notify', async ctx => {
     return;
   }
 
-  const result = await createNotification(ctx.db, ctx.chat.id, tickerUpper, condition);
+  const result = await createNotification({
+    database: ctx.db,
+    chatId: ctx.chat.id,
+    ticker: tickerUpper,
+    direction: condition.direction,
+    price: condition.price,
+  });
 
   if (result.success) {
     await ctx.text('notification.setup.success', {
@@ -62,7 +65,11 @@ notificationController.hears(/^\/n_(\d+)(?:@\w+)?$/, async ctx => {
 
   const index = parseInt(match[1], 10) - 1;
 
-  const result = await removeNotification(ctx.db, ctx.chat.id, index);
+  const result = await removeNotification({
+    database: ctx.db,
+    chatId: ctx.chat.id,
+    index,
+  });
 
   if (result.success) {
     await ctx.text('notification.remove.success', {
@@ -88,7 +95,21 @@ notificationController.command('notifications', async ctx => {
   }
 
   try {
-    const notificationList = formatNotificationList(notifications, priceMap, ctx.i18n.t.bind(ctx.i18n));
+    const notificationList = notifications
+      .map((notification: Notification, index: number) => {
+        const currentPrice = priceMap.get(notification.ticker);
+        const currentPriceText = currentPrice ? formatPrice(currentPrice) : ctx.i18n.t('notification.list.no_price');
+        const targetPrice = formatPrice(notification.price);
+
+        return ctx.i18n.t('notification.list.item', {
+          index: index + 1,
+          ticker: notification.ticker,
+          direction: notification.direction === '>' ? '≥' : '&lt;',
+          targetPrice,
+          currentPrice: currentPriceText,
+        });
+      })
+      .join('\n');
 
     await ctx.text('notification.list.full', {
       notifications: notificationList,

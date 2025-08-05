@@ -1,4 +1,4 @@
-import type { Database } from '../../types/database.js';
+import type { Database } from '../database/types.js';
 import { findTickersByNames } from './data.js';
 
 export async function getTickerPrices(database: Database, tickerNames: string[]): Promise<Map<string, number>> {

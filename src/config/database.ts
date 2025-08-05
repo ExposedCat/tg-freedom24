@@ -1,6 +1,9 @@
 import { MongoClient } from 'mongodb';
 
-import type { Chat, Database, Ticker, User } from '../types/database.js';
+import type { Chat } from '../modules/chat/types.js';
+import type { Database } from '../modules/database/types.js';
+import type { Ticker } from '../modules/ticker/types.js';
+import type { User } from '../modules/user/types.js';
 
 export async function connectToDb() {
   const client = new MongoClient(process.env.DB_CONNECTION_STRING);

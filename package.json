@@ -11,7 +11,8 @@
     "bg:logs": "pm2 logs telegram-bot --lines 1000 -f",
     "start": "npm run compile && node .",
     "lint": "npx biome check src/ --write",
-    "format": "npx biome format src/ --write"
+    "format": "npx biome format src/ --write",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "telegram",

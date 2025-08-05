@@ -1,65 +1,29 @@
-import type { Database, Notification } from '../../types/database.js';
+import type { Database } from '../database/types.js';
+import type { Notification } from '../chat/types.js';
 import { TradenetWebSocket } from '../freedom/realtime.js';
 import { findAllChats, findChatsWithNotifications, updateChatNotifications } from './data.js';
+import { formatPrice } from '../utils/formatting.js';
+import { canSendNotification, shouldTriggerNotification } from './validation.js';
+import { createNotificationMessage } from './utils.js';
+import { shouldDetectBounce } from './validation.js';
 
-export type NotificationCondition = {
-  direction: '>' | '<';
+type CreateNotificationParams = {
+  database: Database;
+  chatId: number;
+  ticker: string;
+  direction: Notification['direction'];
   price: number;
 };
 
-export type NotificationResult = {
-  success: boolean;
-  message?: string;
-  error?: string;
-};
-
-export interface NotificationTriggerResult {
-  chatId: number;
-  message: string;
-}
-
-export function parseNotificationCondition(condition: string): NotificationCondition | null {
-  const match = condition.match(/^([<>])(\d+(?:\.\d+)?)$/);
-  if (!match) {
-    return null;
-  }
-
-  const direction = match[1] as '>' | '<';
-  const price = parseFloat(match[2]);
-
-  return { direction, price };
-}
-
-export function formatPrice(amount: number): string {
-  return `$${amount.toFixed(1)}`;
-}
-
-export async function createNotification(
-  database: Database,
-  chatId: number,
-  ticker: string,
-  condition: NotificationCondition,
-): Promise<NotificationResult> {
+export async function createNotification({ database, chatId, ticker, direction, price }: CreateNotificationParams) {
   try {
     const chat = await database.chat.findOne({ chatId });
     const currentNotifications = chat?.notifications || [];
 
-    const existingIndex = currentNotifications.findIndex(
-      n => n.ticker === ticker && n.direction === condition.direction && n.price === condition.price,
-    );
-
-    if (existingIndex !== -1) {
-      const escapedCondition = `${condition.direction}${condition.price}`.replace(/</g, '&lt;').replace(/>/g, '≥');
-      return {
-        success: false,
-        error: `Notification for ${ticker} ${escapedCondition} already exists`,
-      };
-    }
-
     const newNotification: Notification = {
       ticker,
-      direction: condition.direction,
-      price: condition.price,
+      direction,
+      price,
       lastNotified: null,
       bounceDetected: false,
     };
@@ -72,7 +36,7 @@ export async function createNotification(
 
     return {
       success: true,
-      message: `Notification created for ${ticker} ${condition.direction === '>' ? '≥' : '<'} ${formatPrice(condition.price)}`,
+      message: `Notification created for ${ticker} ${direction === '>' ? '≥' : '<'} ${formatPrice(price)}`,
     };
   } catch (error) {
     console.error('Error creating notification:', error);
@@ -83,11 +47,13 @@ export async function createNotification(
   }
 }
 
-export async function removeNotification(
-  database: Database,
-  chatId: number,
-  index: number,
-): Promise<NotificationResult> {
+type RemoveNotificationParams = {
+  database: Database;
+  chatId: number;
+  index: number;
+};
+
+export async function removeNotification({ database, chatId, index }: RemoveNotificationParams) {
   try {
     const chat = await database.chat.findOne({ chatId });
     const currentNotifications = chat?.notifications || [];
@@ -142,34 +108,8 @@ export async function listNotifications(
   }
 }
 
-export function formatNotificationList(
-  notifications: Notification[],
-  priceMap: Map<string, number>,
-  i18nT: (key: string, params?: any) => string,
-): string {
-  return notifications
-    .map((notification: Notification, index: number) => {
-      const currentPrice = priceMap.get(notification.ticker);
-      const currentPriceText = currentPrice ? formatPrice(currentPrice) : i18nT('notification.list.no_price');
-      const targetPrice = formatPrice(notification.price);
-
-      return i18nT('notification.list.item', {
-        index: index + 1,
-        ticker: notification.ticker,
-        direction: notification.direction === '>' ? '≥' : '&lt;',
-        targetPrice,
-        currentPrice: currentPriceText,
-      });
-    })
-    .join('\n');
-}
-
-export async function processNotifications(
-  database: Database,
-  ticker: string,
-  newPrice: number,
-): Promise<NotificationTriggerResult[]> {
-  const results: NotificationTriggerResult[] = [];
+export async function processNotifications(database: Database, ticker: string, newPrice: number) {
+  const results: { chatId: number; message: string }[] = [];
 
   try {
     const chats = await findChatsWithNotifications(database, ticker);
@@ -240,47 +180,4 @@ export async function getAllNotificationTickers(database: Database): Promise<str
     console.error('[NOTIFICATIONS] Error getting notification tickers:', error);
     return [];
   }
-}
-
-function shouldTriggerNotification(notification: Notification, currentPrice: number): boolean {
-  if (notification.direction === '>' && currentPrice >= notification.price) {
-    return true;
-  }
-  if (notification.direction === '<' && currentPrice < notification.price) {
-    return true;
-  }
-  return false;
-}
-
-function canSendNotification(notification: Notification): boolean {
-  if (!notification.lastNotified) return true;
-
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-  const lastNotified = new Date(notification.lastNotified);
-
-  return lastNotified < fiveMinutesAgo && notification.bounceDetected;
-}
-
-function shouldDetectBounce(notification: Notification, currentPrice: number): boolean {
-  if (!notification.lastNotified || notification.bounceDetected) return false;
-
-  if (notification.direction === '>' && currentPrice <= notification.price) {
-    return true;
-  }
-  if (notification.direction === '<' && currentPrice >= notification.price) {
-    return true;
-  }
-  return false;
-}
-
-function createNotificationMessage(
-  notification: Notification,
-  currentPrice: number,
-  notificationIndex: number,
-): string {
-  const direction = notification.direction === '>' ? 'above' : 'below';
-  const targetPrice = notification.price.toFixed(1);
-  const actualPrice = currentPrice.toFixed(1);
-
-  return `🔔 ${notification.ticker} is now ${direction} $${targetPrice}!\nCurrent price: $${actualPrice}\n\nRemove this notification: /n_${notificationIndex}`;
 }

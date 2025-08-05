@@ -1,22 +1,20 @@
 import type { I18n } from '@grammyjs/i18n/dist/source/i18n.js';
 import { Bot as TelegramBot, session } from 'grammy';
-
-import { historyController } from '../controllers/history.js';
-import { memeController } from '../controllers/meme.js';
-import { notificationController } from '../controllers/notification.js';
-import { optionsController } from '../controllers/options.js';
-import { portfolioController } from '../controllers/portfolio.js';
-import { startController } from '../controllers/start.js';
-import { subscriptionController } from '../controllers/subscription.js';
+import type { Database } from '../modules/database/types.js';
 import { resolvePath } from '../helpers/resolve-path.js';
+import { findChatById } from '../modules/chat/data.js';
 import { TradenetWebSocket } from '../modules/freedom/realtime.js';
-import { findChatById } from '../modules/users/data.js';
-import { getUser } from '../modules/users/service.js';
-import { createReplyWithTextFunc } from '../services/context.js';
-import { NotificationHandler } from '../services/notification-handler.js';
-import type { Database } from '../types/database.js';
-import type { Bot } from '../types/telegram.js';
+import { historyController } from '../modules/history/controller.js';
+import { memeController } from '../modules/meme/controller.js';
+import { notificationController } from '../modules/notifications/controller.js';
+import { portfolioController } from '../modules/portfolio/controller.js';
+import { startController } from '../modules/start/controller.js';
+import { subscriptionController } from '../modules/subscriptions/controller.js';
+import { createReplyWithTextFunc } from '../modules/telegram/context.js';
 import { initLocaleEngine } from './locale-engine.js';
+import type { Bot } from '../modules/telegram/bot.js';
+import { findUserById } from '../modules/user/data.js';
+import { setupNotificationHandler } from '../modules/notifications/handler.js';
 
 function extendContext(bot: Bot, database: Database) {
   bot.use(async (ctx, next) => {
@@ -28,7 +26,7 @@ function extendContext(bot: Bot, database: Database) {
     ctx.db = database;
 
     ctx.dbEntities = {
-      user: await getUser(database, ctx.from.id),
+      user: await findUserById(database, ctx.from.id),
       chat: await findChatById(database, ctx.chat.id),
     };
 
@@ -53,7 +51,6 @@ function setupControllers(bot: Bot) {
   bot.use(notificationController);
   bot.use(historyController);
   bot.use(memeController);
-  bot.use(optionsController);
 }
 
 export async function startBot(database: Database) {
@@ -61,12 +58,11 @@ export async function startBot(database: Database) {
 
   TradenetWebSocket.initialize(database);
 
-  const notificationHandler = new NotificationHandler(bot, database);
-  await notificationHandler.initialize();
+  await setupNotificationHandler(bot, database);
 
   const adminId = process.env.ADMIN_ID;
   if (adminId) {
-    const adminUser = await getUser(database, Number(adminId));
+    const adminUser = await findUserById(database, Number(adminId));
     if (adminUser && adminUser.sid) {
       await TradenetWebSocket.connect(adminUser.sid);
     }

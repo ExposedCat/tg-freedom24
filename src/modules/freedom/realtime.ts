@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import type { Database } from '../../types/database.js';
+import type { Database } from '../database/types.js';
 import { makeApiRequest } from './api.js';
 
 type PriceUpdateCallback = (ticker: string, price: number) => Promise<void>;
