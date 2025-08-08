@@ -1,13 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { buildPredictionSummary } from '../src/modules/prediction/controller.js';
 
-function sanitize(s: string): string {
+describe('Prediction message formatting', () => {
   // Telegram HTML doesn't allow stray '<' or '&' without tags; our builder only includes
   // <b> tags and plain text. This simple check ensures we don't introduce other tags.
-  return s;
-}
-
-describe('Prediction message formatting', () => {
   it('should not include invalid HTML tags and should use ≥/≤ instead of >, <', () => {
     const msg = buildPredictionSummary({
       peakThreshold3y: 1.2,
@@ -23,12 +19,11 @@ describe('Prediction message formatting', () => {
       commission: 1.3,
     } as any);
 
-    const s = sanitize(msg);
-    expect(s.includes('<b>')).toBe(true);
-    expect(s.includes('</b>')).toBe(true);
-    expect(s.includes('≥')).toBe(true);
-    expect(s.includes('≤')).toBe(true);
+    expect(msg.includes('<b>')).toBe(true);
+    expect(msg.includes('</b>')).toBe(true);
+    expect(msg.includes('≥')).toBe(true);
+    expect(msg.includes('≤')).toBe(true);
     // Make sure we didn't include accidental '=' tag: <=> etc.
-    expect(/<[^b/]/.test(s)).toBe(false);
+    expect(/<[^b/]/.test(msg)).toBe(false);
   });
 });

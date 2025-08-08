@@ -1,15 +1,15 @@
 export type PredictionSettings = {
-  peakThreshold3y: number; // param 1
-  peakThreshold3m: number; // param 2
-  minAnnualRevenueGrowth: number; // param 3
-  budget: number; // param 4
-  minMonths: number; // param 5
-  optimismRate: number; // param 6
+  peakThreshold3y: number;
+  peakThreshold3m: number;
+  minAnnualRevenueGrowth: number;
+  budget: number;
+  minMonths: number;
+  optimismRate: number;
   minOpenInterest: number;
   minVolume: number;
   minDelta: number;
   maxSpreadPct: number;
-  commission: number; // shown, not configurable by commands
+  commission: number;
 };
 
 export const defaultPredictionSettings: PredictionSettings = {
