@@ -15,6 +15,7 @@ import { initLocaleEngine } from './locale-engine.js';
 import type { Bot } from '../modules/telegram/bot.js';
 import { findUserById } from '../modules/user/data.js';
 import { setupNotificationHandler } from '../modules/notifications/handler.js';
+import { predictionController } from '../modules/prediction/controller.js';
 
 function extendContext(bot: Bot, database: Database) {
   bot.use(async (ctx, next) => {
@@ -51,6 +52,7 @@ function setupControllers(bot: Bot) {
   bot.use(notificationController);
   bot.use(historyController);
   bot.use(memeController);
+  bot.use(predictionController);
 }
 
 export async function startBot(database: Database) {

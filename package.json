@@ -12,7 +12,10 @@
     "start": "npm run compile && node .",
     "lint": "npx biome check src/ --write",
     "format": "npx biome format src/ --write",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "npm run compile"
   },
   "keywords": [
     "telegram",
@@ -28,7 +31,9 @@
     "dotenv": "^16.0.1",
     "grammy": "^1.24.1",
     "mongodb": "^4.9.1",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "yahoo-finance2": "^2.11.2",
+    "csv-parse": "^5.5.3"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -47,6 +52,9 @@
     "eslint-plugin-react": "^7.34.3",
     "eslint-plugin-sonarjs": "^1.0.3",
     "prettier": "^3.3.2",
+    "vitest": "^2.0.5",
+    "telegram-test-api": "^4.2.1",
+    "mongodb-memory-server": "^9.0.0",
     "prettier-eslint": "^16.3.0",
     "typescript": "^5.5.3"
   },

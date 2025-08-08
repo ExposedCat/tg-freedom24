@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import type { Database } from '../database/types.js';
 import { makeApiRequest } from './api.js';
+import type { OptionSnapshot } from '../prediction/types.js';
 
 type PriceUpdateCallback = (ticker: string, price: number) => Promise<void>;
 
@@ -17,6 +18,7 @@ export class TradenetWebSocket {
   private baseReconnectDelay: number = 1000;
   private priceUpdateCallbacks: PriceUpdateCallback[] = [];
   private isAuthenticated: boolean = false;
+  private latestQuotes: Map<string, any> = new Map();
 
   private constructor() {}
 
@@ -75,6 +77,29 @@ export class TradenetWebSocket {
     return TradenetWebSocket.instance.fetchOptionPricesInstance(optionTickers);
   }
 
+  static async fetchQuotes(names: string[], waitMs: number = 2000): Promise<Map<string, any>> {
+    if (!TradenetWebSocket.instance || !TradenetWebSocket.instance.isAuthenticated) {
+      return new Map();
+    }
+    return TradenetWebSocket.instance.fetchQuotesInstance(names, waitMs);
+  }
+
+  static getLatestQuote(name: string): OptionSnapshot | null {
+    if (!TradenetWebSocket.instance) return null;
+    const raw = TradenetWebSocket.instance.latestQuotes.get(name);
+    if (!raw) return null;
+    return raw as OptionSnapshot;
+  }
+
+  static getLatestQuotes(names: string[]): Map<string, OptionSnapshot> {
+    const result = new Map<string, OptionSnapshot>();
+    for (const n of names) {
+      const q = TradenetWebSocket.getLatestQuote(n);
+      if (q) result.set(n, q);
+    }
+    return result;
+  }
+
   private async connectInstance(sid: string): Promise<boolean> {
     return new Promise(resolve => {
       this.adminSID = sid;
@@ -104,15 +129,18 @@ export class TradenetWebSocket {
               this.isAuthenticated = true;
               await this.initializeAllSubscriptions();
               resolve(true);
-            } else if (type === 'q' && payload.c && payload.bbp !== undefined) {
-              const ticker = payload.c;
+            } else if (type === 'q' && payload.c) {
+              const ticker = payload.c as string;
+              this.latestQuotes.set(ticker, payload);
 
-              const isOption = ticker.startsWith('+');
-              const multiplier = isOption ? payload.contract_multiplier || 100 : 1;
-              const price = payload.bbp * multiplier;
-              if (price > 0) {
-                await this.savePriceUpdate(ticker, price);
-                await this.notifyPriceUpdate(ticker, price);
+              if (payload.bbp !== undefined) {
+                const isOption = ticker.startsWith('+');
+                const multiplier = isOption ? payload.contract_multiplier || 100 : 1;
+                const price = payload.bbp * multiplier;
+                if (price > 0) {
+                  await this.savePriceUpdate(ticker, price);
+                  await this.notifyPriceUpdate(ticker, price);
+                }
               }
             }
           }
@@ -340,5 +368,41 @@ export class TradenetWebSocket {
     }
 
     return priceMap;
+  }
+
+  private async fetchQuotesInstance(names: string[], waitMs: number): Promise<Map<string, any>> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) {
+      return new Map();
+    }
+
+    const originalSubscriptions = new Set(this.desiredSubscriptions);
+    const tempSubscriptions = new Set([...originalSubscriptions, ...names]);
+
+    if (tempSubscriptions.size > 0) {
+      const message = JSON.stringify(['quotes', Array.from(tempSubscriptions)]);
+      this.ws.send(message);
+    }
+
+    const start = Date.now();
+    const result = new Map<string, any>();
+    while (Date.now() - start < waitMs) {
+      for (const n of names) {
+        const q = this.latestQuotes.get(n);
+        if (q && !result.has(n)) {
+          result.set(n, q);
+        }
+      }
+      if (result.size === names.length) break;
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    // restore original subscriptions
+    this.desiredSubscriptions = originalSubscriptions;
+    if (originalSubscriptions.size > 0) {
+      const restoreMessage = JSON.stringify(['quotes', Array.from(originalSubscriptions)]);
+      this.ws.send(restoreMessage);
+    }
+
+    return result;
   }
 }
