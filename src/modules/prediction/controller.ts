@@ -7,6 +7,21 @@ import { runPrediction } from './service.js';
 
 export const predictionController = new Composer<CustomContext>();
 
+export function buildPredictionSummary(s: ReturnType<typeof resolveSettings>): string {
+  return [
+    '<b>Prediction</b>',
+    '',
+    `1) 3y peak/spot ≥ <b>${s.peakThreshold3y}</b>`,
+    `2) 3m peak/spot ≥ <b>${s.peakThreshold3m}</b>`,
+    `3) Min annual revenue growth ≥ <b>${s.minAnnualRevenueGrowth}</b>`,
+    `4) Budget: <b>$${s.budget}</b>`,
+    `5) Min months: <b>${s.minMonths}</b>`,
+    `6) Optimism: <b>${s.optimismRate}</b>`,
+    `OI ≥ <b>${s.minOpenInterest}</b>, Vol ≥ <b>${s.minVolume}</b>, Δ ≥ <b>${s.minDelta}</b>, Spread% ≤ <b>${(s.maxSpreadPct * 100).toFixed(0)}%</b>`,
+    `Commission (round): <b>$1.3</b>`,
+  ].join('\n');
+}
+
 function resolveSettings(user: any) {
   return { ...defaultPredictionSettings, ...(user?.predictionSettings || {}) };
 }
@@ -15,27 +30,14 @@ predictionController.command('prediction', async ctx => {
   const { isValid, targetUser } = await validateUser(ctx);
   if (!isValid || !targetUser) return;
 
-  const s = resolveSettings(targetUser);
-
-  const kb = new InlineKeyboard()
-    .text('⚙️ Settings', 'prediction_settings').row()
-    .text('🚀 Start', 'prediction_start');
-
-  const text = [
-    '<b>Prediction</b>',
-    '',
-    `1) 3y peak/spot > <b>${s.peakThreshold3y}</b>`,
-    `2) 3m peak/spot > <b>${s.peakThreshold3m}</b>`,
-    `3) Min annual revenue growth > <b>${s.minAnnualRevenueGrowth}</b>`,
-    `4) Budget: <b>$${s.budget}</b>`,
-    `5) Min months: <b>${s.minMonths}</b>`,
-    `6) Optimism: <b>${s.optimismRate}</b>`,
-    `OI >= <b>${s.minOpenInterest}</b>, Vol >= <b>${s.minVolume}</b>, Δ >= <b>${s.minDelta}</b>, Spread% <= <b>${(s.maxSpreadPct * 100).toFixed(0)}%</b>`,
-    `Commission (round): <b>$1.3</b>`,
-  ].join('\n');
-
-  await ctx.reply(text, { parse_mode: 'HTML', reply_markup: kb });
+  await doPredictionMenu(ctx, targetUser);
 });
+
+export async function doPredictionMenu(ctx: CustomContext, user: any) {
+  const s = resolveSettings(user);
+  const kb = new InlineKeyboard().text('⚙️ Settings', 'prediction_settings').row().text('🚀 Start', 'prediction_start');
+  await ctx.reply(buildPredictionSummary(s), { parse_mode: 'HTML', reply_markup: kb });
+}
 
 predictionController.callbackQuery('prediction_settings', async ctx => {
   const { isValid, targetUser } = await validateUser(ctx);
@@ -43,16 +45,16 @@ predictionController.callbackQuery('prediction_settings', async ctx => {
   const s = resolveSettings(targetUser);
 
   const lines = [
-    `1) 3y peak/spot: <b>${s.peakThreshold3y}</b> — /set_pr_1`,
-    `2) 3m peak/spot: <b>${s.peakThreshold3m}</b> — /set_pr_2`,
-    `3) Min annual growth: <b>${s.minAnnualRevenueGrowth}</b> — /set_pr_3`,
-    `4) Budget: <b>${s.budget}</b> — /set_pr_4`,
-    `5) Min months: <b>${s.minMonths}</b> — /set_pr_5`,
-    `6) Optimism: <b>${s.optimismRate}</b> — /set_pr_6`,
-    `OI: <b>${s.minOpenInterest}</b> — /set_pr_oi`,
-    `Vol: <b>${s.minVolume}</b> — /set_pr_vol`,
-    `Δ min: <b>${s.minDelta}</b> — /set_pr_delta`,
-    `Spread% max: <b>${s.maxSpreadPct}</b> — /set_pr_spread`,
+    `1) 3y peak/spot: <b>${s.peakThreshold3y}</b> — /set_pr_1` ,
+    `2) 3m peak/spot: <b>${s.peakThreshold3m}</b> — /set_pr_2` ,
+    `3) Min annual growth: <b>${s.minAnnualRevenueGrowth}</b> — /set_pr_3` ,
+    `4) Budget: <b>${s.budget}</b> — /set_pr_4` ,
+    `5) Min months: <b>${s.minMonths}</b> — /set_pr_5` ,
+    `6) Optimism: <b>${s.optimismRate}</b> — /set_pr_6` ,
+    `OI: <b>${s.minOpenInterest}</b> — /set_pr_oi` ,
+    `Vol: <b>${s.minVolume}</b> — /set_pr_vol` ,
+    `Δ min: <b>${s.minDelta}</b> — /set_pr_delta` ,
+    `Spread% max: <b>${s.maxSpreadPct}</b> — /set_pr_spread` ,
     `Commission (round): <b>1.3</b>`
   ].join('\n');
 
@@ -64,7 +66,7 @@ function numberSetter(cmd: string, key: string, parse: (txt: string) => number |
     const { isValid, targetUser } = await validateUser(ctx);
     if (!isValid || !targetUser || !ctx.from) return;
     const s = resolveSettings(targetUser);
-    await ctx.text('Send a new value (current: ${value})', { value: s[key as keyof typeof s] as any });
+    await ctx.reply(`Send a new value (current: ${String(s[key as keyof typeof s])})`, { parse_mode: 'HTML' });
     ctx.session.awaitingSetting = { userId: ctx.from.id, key } as any;
   });
 
@@ -73,12 +75,12 @@ function numberSetter(cmd: string, key: string, parse: (txt: string) => number |
     if (!awaiting || awaiting.userId !== ctx.from?.id) return;
     const val = parse(ctx.message!.text!);
     if (val == null || Number.isNaN(val)) {
-      await ctx.text('Invalid number, cancelled.');
+      await ctx.reply('Invalid number, cancelled.', { parse_mode: 'HTML' });
       ctx.session.awaitingSetting = undefined;
       return;
     }
     await updateUserPredictionSettings(ctx.db, awaiting.userId, { [key]: val });
-    await ctx.text('Updated.');
+    await ctx.reply('Updated.', { parse_mode: 'HTML' });
     ctx.session.awaitingSetting = undefined;
   });
 }
