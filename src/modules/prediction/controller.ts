@@ -124,8 +124,9 @@ predictionController.callbackQuery('prediction_start', async ctx => {
 
   const header = '<b>Results</b>\n';
   const body = results
+    .sort((a,b) => b.conservativeDailyGrowth - a.conservativeDailyGrowth)
     .slice(0, 20)
-    .map(r => `${r.ticker} ${r.expiration} ${r.strike} — mid $${r.initialPrice.toFixed(2)} Δ${r.delta.toFixed(2)} cons.daily ${(r.conservativeDailyGrowth*100).toFixed(2)}%`)
+    .map(r => `${r.name} — bid $${r.bid.toFixed(2)} / ask $${r.ask.toFixed(2)}; best $${r.conservativePeakOptionAdj.toFixed(2)}; Δ ${r.delta.toFixed(3)}; cons.daily ${(r.conservativeDailyGrowth*100).toFixed(2)}%`)
     .join('\n');
   await ctx.reply(header + body, { parse_mode: 'HTML' });
 });

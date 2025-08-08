@@ -204,7 +204,7 @@ export async function runPrediction(
       if (spreadPct > settings.maxSpreadPct) continue;
       const iv = (safeNumber(q.implied_volatility) ?? 0) / 100;
       const delta = safeNumber(q.delta) ?? 0;
-      if (delta < settings.minDelta || delta > 0.9) continue;
+      if (delta < settings.minDelta) continue;
       const oi = Number(q.open_interest ?? 0);
       const vol = Number(q.volume ?? 0);
       if (oi < settings.minOpenInterest || vol < settings.minVolume) continue;
@@ -234,10 +234,13 @@ export async function runPrediction(
       const idx = Math.min(4, outcomes.length - 1);
       const cons = outcomes[idx];
       perOption.push({
+        name,
         ticker,
         strike: parsed.strike,
         expiration: parsed.expiration.toISOString().slice(0, 10),
         initialPrice: mid,
+        bid,
+        ask,
         iv,
         delta,
         spreadPct,

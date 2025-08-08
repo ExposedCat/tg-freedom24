@@ -10,10 +10,13 @@ export type PredictionProgress = {
 };
 
 export type PredictionResultItem = {
+  name: string; // option ticker like +IBM.17OCT2025.C280
   ticker: string;
   strike: number;
   expiration: string;
   initialPrice: number;
+  bid: number;
+  ask: number;
   iv: number;
   delta: number;
   spreadPct: number;
