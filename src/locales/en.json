@@ -1,7 +1,12 @@
 {
-  "start": "To start, please provide your credentials in this format:\n\n<code>/start [apikey] [secretkey] [login] [password]</code>\n\n- Get API key and secret key from <a href=\"https://freedom24.com/tradernet-api/auth-api\">Freedom24 Auth API</a>\n- Use your regular Freedom24 login and password (we will calculate and store the SID for you)\n\nNote: your credentials will be stored in the database. Do <b>not</b> enable \"Allow trading and submission of orders\" for security reasons",
-  "created": "Credentials saved. Hit /start again to change them anytime. See /portfolio to see your portfolio",
+  "start": "Send /start API_KEY SECRET_KEY LOGIN PASSWORD to link your Freedom24 account.",
+  "created": "✅ Credentials saved.",
   "portfolio": {
+    "icon": {
+      "market": { "open": "🟢", "close": "🔴", "pre": "🟡", "post": "🔵" },
+      "state": { "good": "🟢", "neutral": "🟡", "bad": "🔴" },
+      "data": { "warning": "⚠️ Using market prices" }
+    },
     "part": {
       "USD": "💵 $${amount}",
       "EUR": "💶 €${amount}",
@@ -10,86 +15,22 @@
       "total": "${state} ${total} ${dataWarning}",
       "no_positions": "<i>No open positions</i>"
     },
-    "icon": {
-      "state": {
-        "profit": "🟢",
-        "loss": "🔴",
-        "zero": "⚪",
-        "falling": "🗑",
-        "rising": "🚀",
-        "small_loss": "🪨",
-        "moderate_loss": "🪸",
-        "significant_loss": "🌪",
-        "nothing": "💨",
-        "small_gain": "🚀",
-        "moderate_gain": "🌘",
-        "huge_gain": "🪐"
-      },
-      "market": {
-        "closed": "📓 Market Closed (pre 10:00, open 15:30)",
-        "pre": "📙 Premarket (open 15:30)",
-        "open": "📗 Market Open (until 22:00)",
-        "post": "📘 Postmarket (pre 10:00 tomorrow, open 15:30)"
-      },
-      "data": {
-        "warning": "⚠️"
-      }
-    },
-    "full": "${market}\n———\n\n${cash}\n\n${positions}\n\n———\n${total}",
-    "error": "Failed to fetch portfolio: ${error}"
+    "full": "${market}\n\n${cash}\n\n${positions}\n\n${total}",
+    "error": "❌ Failed to load portfolio: ${error}"
   },
-  "subscription": {
-    "subscribe": {
-      "usage": "Please provide a ticker to subscribe to:\n\n<code>/subscribe AAPL</code>",
-      "already": "You are already subscribed to <b>${ticker}</b>",
-      "success": "✅ Successfully subscribed to <b>${ticker}</b>",
-      "error": "❌ Failed to subscribe to <b>${ticker}</b>. Please try again later."
-    },
-    "unsubscribe": {
-      "invalid": "❌ Invalid subscription number. Use /subs to see your current subscriptions.",
-      "success": "✅ Successfully unsubscribed from <b>${ticker}</b>",
-      "error": "❌ Failed to unsubscribe from <b>${ticker}</b>. Please try again later."
-    },
-    "list": {
-      "empty": "No active subscriptions. Use /subscribe [ticker] to start tracking a ticker.",
-      "full": "${subscriptions}${dataWarning}",
-      "item": "<b><a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a></b> ${price} /u_${index}",
-      "no_price": "No price data",
-      "error": "❌ Failed to fetch subscriptions. Please try again later."
-    }
-  },
-  "notification": {
-    "setup": {
-      "usage": "Please provide a ticker and price condition:\n\n<code>/notify AAPL ≥150</code>\n<code>/notify AMD.US &lt;160</code>",
-      "invalid_format": "❌ Invalid price format. Use: /notify [ticker] [&lt;|≥][price]",
-      "already_exists": "You already have a notification set for <b>${ticker}</b> ${condition}",
-      "success": "✅ Notification set: alert when <b>${ticker}</b> goes ${direction} ${price}",
-      "error": "❌ Failed to set notification for <b>${ticker}</b>. Please try again later."
-    },
-    "remove": {
-      "invalid": "❌ Invalid notification number. Use /notifications to see your current notifications.",
-      "success": "✅ Removed notification: <b>${ticker}</b> ${direction} ${price}",
-      "error": "❌ Failed to remove notification. Please try again later."
-    },
-    "list": {
-      "empty": "No active notifications. Use /notify [ticker] [&lt;|≥][price] to set up price alerts.",
-      "full": "${notifications}${dataWarning}",
-      "item": "<b><a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a></b> ${direction}${targetPrice} (${currentPrice}) /n_${index}",
-      "no_price": "No price data",
-      "error": "❌ Failed to fetch notifications. Please try again later."
-    }
+  "notifications": {
+    "created": "✅ Notification created.",
+    "deleted": "🗑️ Notification deleted.",
+    "error": "❌ Failed to create notification.",
+    "invalid": "❌ Invalid command. Use /notify TICKER DIRECTION PRICE"
   },
   "history": {
-    "empty": "No completed trades found",
-    "error": "Failed to fetch order history: ${error}",
-    "part": {
-      "ticker_summary": "${state} <a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a> <b>${profit}</b>${count}",
-      "total_line": "${state} ${profit} ${percentage}"
-    },
-    "full": "${summary}\n———\n${totals}"
+    "title": "📜 Trade History",
+    "empty": "<i>No trades found</i>",
+    "error": "❌ Failed to load history"
   },
   "meme": {
-    "usage": "Please provide top and bottom text for the meme separated by /:\n\n<code>/meme [top text] / [bottom text]</code>\n\nExample: <code>/meme Hello World / This is awesome</code>",
+    "usage": "Send /meme TEXT",
     "error": "❌ Failed to generate meme. Please try again later."
   },
   "options": {

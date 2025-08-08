@@ -41,6 +41,15 @@ export async function findUserById(database: Database, userId: number): Promise<
   return await database.user.findOne({ userId });
 }
 
+export async function updateUserPredictionSettings(
+  database: Database,
+  userId: number,
+  partial: Partial<User['predictionSettings']>,
+): Promise<User | null> {
+  await database.user.updateOne({ userId }, { $set: { predictionSettings: partial } }, { upsert: true });
+  return await findUserById(database, userId);
+}
+
 export async function createOrUpdateUser(
   database: Database,
   userId: number,

@@ -19,11 +19,14 @@ export interface Custom<C extends Context> {
 
 export type CustomContextMethods = Custom<Context>;
 
+export type BotSession = {
+  awaitingSetting?: { userId: number; key: string };
+};
+
 export type CustomContext = Context &
   Custom<Context> &
   I18nContextFlavor &
-  // biome-ignore lint/complexity/noBannedTypes: <explanation>
-  SessionFlavor<{}>;
+  SessionFlavor<BotSession>;
 
 export function createReplyWithTextFunc(ctx: CustomContext): CustomContextMethods['text'] {
   return (resourceKey, templateData, extra = {}) => {
