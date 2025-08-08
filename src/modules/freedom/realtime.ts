@@ -20,6 +20,33 @@ export class TradenetWebSocket {
 
   private constructor() {}
 
+  private sendQuotes(subscriptions: Iterable<string>): void {
+    if (!this.isConnectedInstance()) {
+      return;
+    }
+    const list = Array.from(subscriptions);
+    if (list.length === 0) {
+      return;
+    }
+    console.log('sending quotes', list);
+    this.ws!.send(JSON.stringify(['quotes', list]));
+  }
+
+  private setDesiredSubscriptionsAndSend(newSubscriptions: Set<string>): void {
+    this.desiredSubscriptions = newSubscriptions;
+    this.sendQuotes(this.desiredSubscriptions);
+  }
+
+  private addSubscriptionsAndSend(optionNames: string[]): void {
+    if (!this.isConnectedInstance()) {
+      return;
+    }
+    for (const option of optionNames) {
+      this.desiredSubscriptions.add(option);
+    }
+    this.sendQuotes(this.desiredSubscriptions);
+  }
+
   static initialize(database: Database): void {
     if (!TradenetWebSocket.instance) {
       TradenetWebSocket.instance = new TradenetWebSocket();
@@ -46,9 +73,12 @@ export class TradenetWebSocket {
     }
   }
 
-  static async checkForNewOptionsInPortfolio(_positions: { name: string }[]): Promise<void> {
+  static async checkForNewOptionsInPortfolio(positions: { name: string }[]): Promise<void> {
     if (TradenetWebSocket.instance && TradenetWebSocket.instance.isAuthenticated) {
-      await TradenetWebSocket.instance.refreshSubscriptions();
+      const tickers = positions.map(p => p.name).filter(Boolean);
+      if (tickers.length > 0) {
+        TradenetWebSocket.instance.addSubscriptionsAndSend(tickers);
+      }
     }
   }
 
@@ -104,12 +134,13 @@ export class TradenetWebSocket {
               this.isAuthenticated = true;
               await this.initializeAllSubscriptions();
               resolve(true);
-            } else if (type === 'q' && payload.c && payload.bbp !== undefined) {
+            } else if (type === 'q' && payload.c && payload.ltp !== undefined) {
               const ticker = payload.c;
+              console.log(ticker, payload.ltp);
 
               const isOption = ticker.startsWith('+');
               const multiplier = isOption ? payload.contract_multiplier || 100 : 1;
-              const price = payload.bbp * multiplier;
+              const price = payload.ltp * multiplier;
               if (price > 0) {
                 await this.savePriceUpdate(ticker, price);
                 await this.notifyPriceUpdate(ticker, price);
@@ -182,7 +213,7 @@ export class TradenetWebSocket {
   }
 
   private async refreshSubscriptions(): Promise<void> {
-    if (!this.database || !this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) {
+    if (!this.database || !this.isConnectedInstance()) {
       return;
     }
 
@@ -201,6 +232,7 @@ export class TradenetWebSocket {
           if (response?.result?.ps?.pos) {
             for (const pos of response.result.ps.pos) {
               allSubscriptions.add(pos.i);
+              allSubscriptions.add(pos.base_contract_code);
             }
           }
         } catch (error) {
@@ -232,15 +264,11 @@ export class TradenetWebSocket {
     if (allSubscriptions.size > 0) {
       const hasPortfolioSubs = Array.from(allSubscriptions).some(sub => sub.includes('C') || sub.includes('P'));
       if (hasPortfolioSubs) {
-        this.ws.send(JSON.stringify(['portfolio']));
+        this.ws!.send(JSON.stringify(['portfolio']));
       }
     }
 
-    this.desiredSubscriptions = allSubscriptions;
-    if (allSubscriptions.size > 0) {
-      const message = JSON.stringify(['quotes', Array.from(allSubscriptions)]);
-      this.ws.send(message);
-    }
+    this.setDesiredSubscriptionsAndSend(allSubscriptions);
   }
 
   private async initializeAllSubscriptions(): Promise<void> {
@@ -248,18 +276,10 @@ export class TradenetWebSocket {
   }
 
   private async subscribeToOptions(optionNames: string[]): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) {
+    if (!this.isConnectedInstance()) {
       return;
     }
-
-    for (const option of optionNames) {
-      this.desiredSubscriptions.add(option);
-    }
-
-    if (this.desiredSubscriptions.size > 0) {
-      const message = JSON.stringify(['quotes', Array.from(this.desiredSubscriptions)]);
-      this.ws.send(message);
-    }
+    this.addSubscriptionsAndSend(optionNames);
   }
 
   private async savePriceUpdate(name: string, price: number): Promise<void> {
@@ -293,7 +313,7 @@ export class TradenetWebSocket {
   }
 
   private async fetchOptionPricesInstance(optionTickers: string[]): Promise<Map<string, number>> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.isAuthenticated) {
+    if (!this.isConnectedInstance()) {
       return new Map();
     }
 
@@ -313,10 +333,7 @@ export class TradenetWebSocket {
     this.priceUpdateCallbacks.push(priceHandler);
 
     try {
-      if (tempSubscriptions.size > 0) {
-        const message = JSON.stringify(['quotes', Array.from(tempSubscriptions)]);
-        this.ws.send(message);
-      }
+      this.sendQuotes(tempSubscriptions);
 
       await new Promise<void>(resolve => {
         const checkComplete = () => {
@@ -332,11 +349,7 @@ export class TradenetWebSocket {
     } finally {
       this.priceUpdateCallbacks = this.priceUpdateCallbacks.filter(cb => cb !== priceHandler);
 
-      this.desiredSubscriptions = originalSubscriptions;
-      if (originalSubscriptions.size > 0) {
-        const restoreMessage = JSON.stringify(['quotes', Array.from(originalSubscriptions)]);
-        this.ws.send(restoreMessage);
-      }
+      this.setDesiredSubscriptionsAndSend(originalSubscriptions);
     }
 
     return priceMap;
