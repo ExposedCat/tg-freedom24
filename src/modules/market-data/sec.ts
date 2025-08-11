@@ -1,5 +1,3 @@
-import fetch from 'node-fetch';
-
 type SecUnitEntry = {
   start?: string;
   end?: string;
