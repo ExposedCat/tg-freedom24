@@ -1,8 +1,8 @@
 import { Composer } from 'grammy';
 
 import { TradenetWebSocket } from '../freedom/realtime.js';
-import { createOrUpdateUser, findUserById } from '../user/data.js';
 import type { CustomContext } from '../telegram/context.js';
+import { createOrUpdateUser, findUserById } from '../user/data.js';
 
 export const startController = new Composer<CustomContext>();
 startController.command('start', async ctx => {

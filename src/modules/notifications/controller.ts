@@ -1,10 +1,10 @@
 import { Composer } from 'grammy';
-import { TradenetWebSocket } from '../freedom/realtime.js';
-import { formatPrice } from '../utils/formatting.js';
-import type { CustomContext } from '../telegram/context.js';
-import { parseNotificationCondition } from './utils.js';
-import { createNotification, removeNotification, listNotifications } from './service.js';
 import type { Notification } from '../chat/types.js';
+import { TradenetWebSocket } from '../freedom/realtime.js';
+import type { CustomContext } from '../telegram/context.js';
+import { formatPrice } from '../utils/formatting.js';
+import { createNotification, listNotifications, removeNotification } from './service.js';
+import { parseNotificationCondition } from './utils.js';
 
 export const notificationController = new Composer<CustomContext>();
 

@@ -1,5 +1,5 @@
-import { formatMoneyChange, formatPercentageChange, formatTimeLeft } from '../utils/formatting.js';
 import type { Option } from '../freedom/portfolio.js';
+import { formatMoneyChange, formatPercentageChange, formatTimeLeft } from '../utils/formatting.js';
 
 export type ProcessedPosition = {
   state: string;

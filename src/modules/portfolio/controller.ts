@@ -1,11 +1,11 @@
 import { Composer } from 'grammy';
-import { getMarketState } from './utils.js';
+import { fetchPortfolio } from '../freedom/portfolio.js';
+import { TradenetWebSocket } from '../freedom/realtime.js';
 import type { CustomContext } from '../telegram/context.js';
 import { validateUser } from '../user/utils.js';
-import { TradenetWebSocket } from '../freedom/realtime.js';
-import { getPortfolioState, processPosition } from './service.js';
-import { fetchPortfolio } from '../freedom/portfolio.js';
 import { formatMoneyChange } from '../utils/formatting.js';
+import { getPortfolioState, processPosition } from './service.js';
+import { getMarketState } from './utils.js';
 
 export const portfolioController = new Composer<CustomContext>();
 

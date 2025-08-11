@@ -1,3 +1,14 @@
-- Write only modular, production-grade code, following best-practices for reliability
-- NEVER write any comments
-- Never run project, just let user know it's ready
+STRICTLY FOLLOW THESE INSTRUCTIONS:
+
+- Always write production-grade code
+- Always use `type` instead of `interface`
+- Always use env for relevant constants
+- Always only write what is needed right now. Keep all your edits as minimal and
+  concise as possible to perform a task. Always start by a small research and
+  implementation plan, proceed only after confirmation
+- Never write any comments, except linter blockers
+- Never create .md files unless explicitly requested to
+- Never bloat README with too many technical details, keep it concise and simple
+- Never create `index.ts` files
+- Never use single-letter variables, instead use only descriptive names. This applies to all variables including lambda arguments
+- Never create relay/empty functions

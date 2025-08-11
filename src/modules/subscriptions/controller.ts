@@ -1,8 +1,8 @@
 import { Composer } from 'grammy';
 import { TradenetWebSocket } from '../freedom/realtime.js';
-import { addSubscription, listSubscriptions, removeSubscription } from './service.js';
 import type { CustomContext } from '../telegram/context.js';
 import { formatPrice } from '../utils/formatting.js';
+import { addSubscription, listSubscriptions, removeSubscription } from './service.js';
 
 export const subscriptionController = new Composer<CustomContext>();
 

@@ -4,6 +4,11 @@ import { makeApiRequest } from './api.js';
 
 type PriceUpdateCallback = (ticker: string, price: number) => Promise<void>;
 
+type FetchPricesOptions = {
+  timeoutMs?: number;
+  requireAll?: boolean;
+};
+
 export class TradenetWebSocket {
   private static instance: TradenetWebSocket | null = null;
   private ws: WebSocket | null = null;
@@ -28,7 +33,6 @@ export class TradenetWebSocket {
     if (list.length === 0) {
       return;
     }
-    console.log('sending quotes', list);
     this.ws!.send(JSON.stringify(['quotes', list]));
   }
 
@@ -98,11 +102,11 @@ export class TradenetWebSocket {
     return TradenetWebSocket.instance?.isConnectedInstance() ?? false;
   }
 
-  static async fetchOptionPrices(optionTickers: string[]): Promise<Map<string, number>> {
+  static async fetchOptionPrices(optionTickers: string[], options?: FetchPricesOptions): Promise<Map<string, number>> {
     if (!TradenetWebSocket.instance || !TradenetWebSocket.instance.isAuthenticated) {
       return new Map();
     }
-    return TradenetWebSocket.instance.fetchOptionPricesInstance(optionTickers);
+    return TradenetWebSocket.instance.fetchOptionPricesInstance(optionTickers, options);
   }
 
   private async connectInstance(sid: string): Promise<boolean> {
@@ -136,11 +140,11 @@ export class TradenetWebSocket {
               resolve(true);
             } else if (type === 'q' && payload.c && payload.ltp !== undefined) {
               const ticker = payload.c;
-              console.log(ticker, payload.ltp);
 
               const isOption = ticker.startsWith('+');
               const multiplier = isOption ? payload.contract_multiplier || 100 : 1;
-              const price = payload.ltp * multiplier;
+              const bestBidOrLast = typeof payload.bbp === 'number' && payload.bbp > 0 ? payload.bbp : payload.ltp;
+              const price = bestBidOrLast * multiplier;
               if (price > 0) {
                 await this.savePriceUpdate(ticker, price);
                 await this.notifyPriceUpdate(ticker, price);
@@ -312,10 +316,16 @@ export class TradenetWebSocket {
     }
   }
 
-  private async fetchOptionPricesInstance(optionTickers: string[]): Promise<Map<string, number>> {
+  private async fetchOptionPricesInstance(
+    optionTickers: string[],
+    options?: FetchPricesOptions,
+  ): Promise<Map<string, number>> {
     if (!this.isConnectedInstance()) {
       return new Map();
     }
+
+    const timeoutMs = options?.timeoutMs ?? 3000;
+    const requireAll = options?.requireAll ?? false;
 
     const originalSubscriptions = new Set(this.desiredSubscriptions);
     const tempSubscriptions = new Set([...originalSubscriptions, ...optionTickers]);
@@ -335,21 +345,28 @@ export class TradenetWebSocket {
     try {
       this.sendQuotes(tempSubscriptions);
 
+      const start = Date.now();
       await new Promise<void>(resolve => {
         const checkComplete = () => {
-          if (receivedTickers.size === optionTickers.length || receivedTickers.size > 0) {
+          const allReceived = receivedTickers.size === optionTickers.length;
+          const timedOut = Date.now() - start >= timeoutMs;
+          if ((requireAll && (allReceived || timedOut)) || (!requireAll && (receivedTickers.size > 0 || timedOut))) {
             resolve();
           } else {
             setTimeout(checkComplete, 100);
           }
         };
-        setTimeout(checkComplete, 500);
-        setTimeout(resolve, 3000);
+        setTimeout(checkComplete, 100);
       });
     } finally {
       this.priceUpdateCallbacks = this.priceUpdateCallbacks.filter(cb => cb !== priceHandler);
 
-      this.setDesiredSubscriptionsAndSend(originalSubscriptions);
+      const current = new Set(this.desiredSubscriptions);
+      const extras = optionTickers.filter(t => !originalSubscriptions.has(t));
+      for (const extra of extras) {
+        current.delete(extra);
+      }
+      this.setDesiredSubscriptionsAndSend(current);
     }
 
     return priceMap;

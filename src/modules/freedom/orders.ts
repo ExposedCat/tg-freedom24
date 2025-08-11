@@ -22,12 +22,18 @@ export type OrderHistoryResponse = {
   };
 };
 
-export type OptionsResponse = {
-  result?: {
-    [key: string]: any;
-  };
-  [key: string]: any;
+export type OptionListing = {
+  ticker: string;
+  base_contract_code: string;
+  last_trade_date: string;
+  expire_date: string;
+  strike_price: string;
+  option_type: 'CALL' | 'PUT' | string;
+  need_to_quanthuse_subscribe: boolean;
+  contract_multiplier: number;
 };
+
+export type OptionsResponse = OptionListing[];
 
 export async function fetchOrdersHistory(
   apiKey: string,
@@ -57,4 +63,9 @@ export async function fetchOptions(
     },
     'v1',
   );
+}
+
+export function toBaseContractCodeFromYahooSymbol(symbol: string): string {
+  if (symbol.includes('.')) return symbol;
+  return `${symbol}.US`;
 }

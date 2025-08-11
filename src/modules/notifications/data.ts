@@ -1,6 +1,6 @@
-import type { Database } from '../database/types.js';
 import type { Chat } from '../chat/types.js';
 import type { Notification } from '../chat/types.js';
+import type { Database } from '../database/types.js';
 
 export async function findChatsWithNotifications(database: Database, ticker: string): Promise<Chat[]> {
   try {

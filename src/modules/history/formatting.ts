@@ -1,6 +1,6 @@
 import { getPortfolioState } from '../portfolio/service.js';
-import type { TickerSummary, TradeStatistics } from './types.js';
 import { formatMoneyChange, formatPercentageChange } from '../utils/formatting.js';
+import type { TickerSummary, TradeStatistics } from './types.js';
 
 export type OpenPosition = {
   ticker: string;

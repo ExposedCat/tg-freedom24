@@ -1,10 +1,10 @@
-import type { Database } from '../database/types.js';
 import type { Notification } from '../chat/types.js';
+import type { Database } from '../database/types.js';
 import { TradenetWebSocket } from '../freedom/realtime.js';
-import { findAllChats, findChatsWithNotifications, updateChatNotifications } from './data.js';
 import { formatPrice } from '../utils/formatting.js';
-import { canSendNotification, shouldTriggerNotification } from './validation.js';
+import { findAllChats, findChatsWithNotifications, updateChatNotifications } from './data.js';
 import { createNotificationMessage } from './utils.js';
+import { canSendNotification, shouldTriggerNotification } from './validation.js';
 import { shouldDetectBounce } from './validation.js';
 
 type CreateNotificationParams = {

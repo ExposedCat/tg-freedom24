@@ -2,12 +2,12 @@ import type { Database } from '../database/types.js';
 import { getTickerPrices } from '../tickers/service.js';
 import { formatMoneyChange } from '../utils/formatting.js';
 import type {
-  ProcessedTradeHistory,
-  Trade,
-  OpenPosition,
-  TradeStatistics,
-  TickerSummary,
   HistoryEntry,
+  OpenPosition,
+  ProcessedTradeHistory,
+  TickerSummary,
+  Trade,
+  TradeStatistics,
 } from './types.js';
 
 export function processTradeHistory(orders: any[]): ProcessedTradeHistory {
