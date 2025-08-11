@@ -3,6 +3,7 @@ import { formatMoneyChange, formatPercentageChange, formatTimeLeft } from '../ut
 
 export type ProcessedPosition = {
   state: string;
+  ticker: string;
   name: string;
   change: string;
   percent: string;
@@ -27,6 +28,7 @@ export function processPosition(position: Option): ProcessedPosition {
 
   return {
     state: profit > 0 ? 'profit' : profit < 0 ? 'loss' : 'zero',
+    ticker: position.ticker,
     name: position.name,
     change: formatMoneyChange(profit),
     percent: formatPercentageChange(percentage),

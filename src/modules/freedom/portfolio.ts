@@ -6,6 +6,7 @@ import { TradenetWebSocket } from './realtime.js';
 import type { Freedom24PortfolioResponse } from './types.js';
 
 export type Option = {
+  ticker: string;
   name: string;
   startDate: Date;
   endDate: Date;
@@ -82,21 +83,22 @@ export async function fetchPortfolio(
       }
     }
 
-    const positions = response.result.ps.pos.map(pos => {
-      const dbPrice = dbPrices.get(pos.i);
-      const baseTickerPrice = dbPrices.get(pos.base_contract_code) ?? 0;
-      const currentPrice = (dbPrice ?? pos.mkt_price * pos.face_val_a) * pos.q;
+    const positions = response.result.ps.pos.map(position => {
+      const dbPrice = dbPrices.get(position.i);
+      const baseTickerPrice = dbPrices.get(position.base_contract_code) ?? 0;
+      const currentPrice = (dbPrice ?? position.mkt_price * position.face_val_a) * position.q;
       const usingMarketPrice = dbPrice === undefined;
-      const startDate = orderDates.get(pos.i) || new Date(0);
+      const startDate = orderDates.get(position.i) || new Date(0);
 
       return {
-        name: pos.base_contract_code,
+        ticker: position.i,
+        name: position.base_contract_code,
         startDate,
-        endDate: new Date(pos.maturity_d),
-        startPrice: pos.price_a * pos.face_val_a * pos.q,
+        endDate: new Date(position.maturity_d),
+        startPrice: position.price_a * position.face_val_a * position.q,
         currentPrice,
         baseTickerPrice,
-        strike: Number(pos.i.split('C').at(-1)),
+        strike: Number(position.i.split('C').at(-1)),
         usingMarketPrice,
       };
     });
