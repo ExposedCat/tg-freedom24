@@ -10,6 +10,7 @@ import {
   createHistoryEntries,
   generateTradeSummaryText,
   processTradeHistory,
+  inferBaseInvestedFromOrders,
 } from './service.js';
 
 export const historyController = new Composer<CustomContext>();
@@ -44,7 +45,15 @@ historyController.command('history', async ctx => {
   const historyEntries = createHistoryEntries(tickerSummary, openPositions);
 
   const summaryText = generateTradeSummaryText(historyEntries, dbPrices, ctx.i18n.t.bind(ctx.i18n));
-  const totalsText = generateTotalsText(openPositions, tickerSummary, statistics, ctx.i18n.t.bind(ctx.i18n));
+  const baseInvested = inferBaseInvestedFromOrders(orderHistory.orders.order);
+
+  const totalsText = generateTotalsText(
+    openPositions,
+    tickerSummary,
+    statistics,
+    ctx.i18n.t.bind(ctx.i18n),
+    baseInvested,
+  );
 
   const message = ctx.i18n.t('history.full', {
     summary: summaryText,

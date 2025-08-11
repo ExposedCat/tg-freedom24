@@ -1,5 +1,6 @@
 STRICTLY FOLLOW THESE INSTRUCTIONS:
 
+- Always do minimal changes to the codebase to achieve the task
 - Always write production-grade code
 - Always use `type` instead of `interface`
 - Always use env for relevant constants

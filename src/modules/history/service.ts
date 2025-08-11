@@ -24,23 +24,33 @@ export function processTradeHistory(orders: any[]): ProcessedTradeHistory {
     }
 
     const position = tickerPositions.get(ticker)!;
-    const trade = order.trade[0];
+
+    const totalQuantity = order.trade.reduce((sum: number, t: any) => sum + (t.q ?? 0), 0);
+    const totalValue = order.trade.reduce((sum: number, t: any) => sum + (t.v ?? 0), 0);
+    const avgPrice = totalQuantity !== 0 ? totalValue / totalQuantity : 0;
+    const orderDate = new Date(
+      order.trade.reduce((min: number, t: any) => {
+        const time = new Date(t.date).getTime();
+        return time < min ? time : min;
+      }, new Date(order.trade[0].date).getTime()),
+    );
+    const totalProfit = order.trade.reduce((sum: number, t: any) => sum + (t.profit ?? 0), 0);
 
     if (order.oper === 1) {
       position.buys.push({
-        price: trade.p,
-        quantity: trade.q,
-        date: new Date(trade.date),
-        value: trade.v,
+        price: avgPrice,
+        quantity: totalQuantity,
+        date: orderDate,
+        value: totalValue,
         instrumentName: order.instr,
       });
     } else if (order.oper === 3) {
       position.sells.push({
-        price: trade.p,
-        quantity: trade.q,
-        date: new Date(trade.date),
-        value: trade.v,
-        profit: trade.profit,
+        price: avgPrice,
+        quantity: totalQuantity,
+        date: orderDate,
+        value: totalValue,
+        profit: totalProfit,
         instrumentName: order.instr,
       });
     }
@@ -172,7 +182,21 @@ export function createHistoryEntries(
     });
   }
 
-  return allEntries.sort((a, b) => b.profit - a.profit).slice(0, 15);
+  return allEntries
+    .sort(
+      (entryA, entryB) =>
+        Math.max(
+          0,
+          ...entryB.summary.trades.map(trade => trade.buyDate.getTime()),
+          ...entryB.summary.openPositions.map(position => position.buyDate.getTime()),
+        ) -
+        Math.max(
+          0,
+          ...entryA.summary.trades.map(trade => trade.buyDate.getTime()),
+          ...entryA.summary.openPositions.map(position => position.buyDate.getTime()),
+        ),
+    )
+    .slice(0, 50);
 }
 
 export function generateTradeSummaryText(
@@ -222,4 +246,32 @@ export function generateTradeSummaryText(
       return `${mainLine}\n${tradeDetails.join('\n')}`;
     })
     .join('\n');
+}
+
+export function inferBaseInvestedFromOrders(orders: any[]): number {
+  const events: { date: Date; amount: number }[] = [];
+  for (const order of orders) {
+    if (order.stat !== 21 || !order.trade || order.trade.length === 0) continue;
+    const sumValue = order.trade.reduce((sum: number, t: any) => sum + (t.v ?? 0), 0);
+    const eventDate = new Date(
+      order.trade.reduce((min: number, t: any) => {
+        const time = new Date(t.date).getTime();
+        return time < min ? time : min;
+      }, new Date(order.trade[0].date).getTime()),
+    );
+    const sign = order.oper === 1 ? -1 : order.oper === 3 ? 1 : 0;
+    if (sign === 0) continue;
+    events.push({ date: eventDate, amount: sign * sumValue });
+  }
+  events.sort((a, b) => a.date.getTime() - b.date.getTime());
+  let cash = 0;
+  let baseInvested = 0;
+  for (const ev of events) {
+    cash += ev.amount;
+    if (cash < 0) {
+      baseInvested += -cash;
+      cash = 0;
+    }
+  }
+  return baseInvested;
 }

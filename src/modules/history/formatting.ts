@@ -16,15 +16,15 @@ export function generateTotalsText(
   tickerSummary: Map<string, TickerSummary>,
   statistics: TradeStatistics,
   i18nT: (key: string, params?: any) => string,
+  baseInvested: number,
 ): string {
   if (openPositions.length > 0) {
     const totalCurrentProfit = Array.from(tickerSummary.values()).reduce((sum, s) => sum + s.currentProfit, 0);
     const totalOpenInvested = openPositions.reduce((sum, pos) => sum + pos.currentValue, 0);
-    const totalCurrentInvested = statistics.finishedInvested + totalOpenInvested;
-    const currentPercentage = totalCurrentInvested !== 0 ? (totalCurrentProfit / totalCurrentInvested) * 100 : 0;
+    const currentPercentage = baseInvested !== 0 ? (totalCurrentProfit / baseInvested) * 100 : 0;
 
     const worstCaseProfit = statistics.finishedProfit - totalOpenInvested;
-    const worstCasePercentage = totalCurrentInvested !== 0 ? (worstCaseProfit / totalCurrentInvested) * 100 : 0;
+    const worstCasePercentage = baseInvested !== 0 ? (worstCaseProfit / baseInvested) * 100 : 0;
 
     const currentState = getPortfolioState(currentPercentage);
 
@@ -34,15 +34,16 @@ export function generateTotalsText(
       percentage: formatPercentageChange(currentPercentage),
     });
 
-    totalsText += `\n${formatMoneyChange(worstCaseProfit)} ${formatPercentageChange(worstCasePercentage)}, ${formatMoneyChange(statistics.finishedProfit)} ${formatPercentageChange(statistics.finishedPercentage)}`;
+    totalsText += `\n${formatMoneyChange(worstCaseProfit)} ${formatPercentageChange(worstCasePercentage)}, ${formatMoneyChange(statistics.finishedProfit)} ${formatPercentageChange(baseInvested !== 0 ? (statistics.finishedProfit / baseInvested) * 100 : 0)}`;
 
     return totalsText;
   } else {
-    const finishedState = getPortfolioState(statistics.finishedPercentage);
+    const finishedPercentage = baseInvested !== 0 ? (statistics.finishedProfit / baseInvested) * 100 : 0;
+    const finishedState = getPortfolioState(finishedPercentage);
     return i18nT('history.part.total_line', {
       state: i18nT(`portfolio.icon.state.${finishedState}`),
       profit: formatMoneyChange(statistics.finishedProfit),
-      percentage: formatPercentageChange(statistics.finishedPercentage),
+      percentage: formatPercentageChange(finishedPercentage),
     });
   }
 }
