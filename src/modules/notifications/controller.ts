@@ -8,13 +8,48 @@ import { parseNotificationCondition } from './utils.js';
 
 export const notificationController = new Composer<CustomContext>();
 
+async function sendNotificationList(ctx: CustomContext) {
+  const { notifications, priceMap } = await listNotifications(ctx.db, ctx.chat!.id);
+
+  if (notifications.length === 0) {
+    await ctx.text('notification.list.empty');
+    return;
+  }
+
+  try {
+    const notificationList = notifications
+      .map((notification: Notification, index: number) => {
+        const currentPrice = priceMap.get(notification.ticker);
+        const currentPriceText = currentPrice ? formatPrice(currentPrice) : ctx.i18n.t('notification.list.no_price');
+        const targetPrice = formatPrice(notification.price);
+
+        return ctx.i18n.t('notification.list.item', {
+          index: index + 1,
+          ticker: notification.ticker,
+          direction: notification.direction === '>' ? '≥' : '&lt;',
+          targetPrice,
+          currentPrice: currentPriceText,
+        });
+      })
+      .join('\n');
+
+    await ctx.text('notification.list.full', {
+      notifications: notificationList,
+      dataWarning: TradenetWebSocket.isConnected() ? '' : ` ${ctx.i18n.t('portfolio.icon.data.warning')}`,
+    });
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    await ctx.text('notification.list.error');
+  }
+}
+
 notificationController.command('notify', async ctx => {
   if (!ctx.chat) {
     return;
   }
 
   if (!ctx.match?.trim()) {
-    await ctx.text('notification.setup.usage');
+    await sendNotificationList(ctx);
     return;
   }
 
@@ -55,12 +90,12 @@ notificationController.command('notify', async ctx => {
   }
 });
 
-notificationController.hears(/^\/n_(\d+)(?:@\w+)?$/, async ctx => {
+notificationController.hears(/^\/(?:r_)?n_(\d+)(?:@\w+)?$/, async ctx => {
   if (!ctx.chat) {
     return;
   }
 
-  const match = ctx.message?.text?.match(/^\/n_(\d+)(?:@\w+)?$/);
+  const match = ctx.message?.text?.match(/^\/(?:r_)?n_(\d+)(?:@\w+)?$/);
   if (!match) return;
 
   const index = parseInt(match[1], 10) - 1;
@@ -77,46 +112,8 @@ notificationController.hears(/^\/n_(\d+)(?:@\w+)?$/, async ctx => {
       direction: result.message?.includes('≥') ? '≥' : '&lt;',
       price: result.message?.match(/\$[\d.]+/)?.[0] || '',
     });
+    await sendNotificationList(ctx);
   } else {
     await ctx.text('notification.remove.invalid');
-  }
-});
-
-notificationController.command('notifications', async ctx => {
-  if (!ctx.chat) {
-    return;
-  }
-
-  const { notifications, priceMap } = await listNotifications(ctx.db, ctx.chat.id);
-
-  if (notifications.length === 0) {
-    await ctx.text('notification.list.empty');
-    return;
-  }
-
-  try {
-    const notificationList = notifications
-      .map((notification: Notification, index: number) => {
-        const currentPrice = priceMap.get(notification.ticker);
-        const currentPriceText = currentPrice ? formatPrice(currentPrice) : ctx.i18n.t('notification.list.no_price');
-        const targetPrice = formatPrice(notification.price);
-
-        return ctx.i18n.t('notification.list.item', {
-          index: index + 1,
-          ticker: notification.ticker,
-          direction: notification.direction === '>' ? '≥' : '&lt;',
-          targetPrice,
-          currentPrice: currentPriceText,
-        });
-      })
-      .join('\n');
-
-    await ctx.text('notification.list.full', {
-      notifications: notificationList,
-      dataWarning: TradenetWebSocket.isConnected() ? '' : ` ${ctx.i18n.t('portfolio.icon.data.warning')}`,
-    });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    await ctx.text('notification.list.error');
   }
 });

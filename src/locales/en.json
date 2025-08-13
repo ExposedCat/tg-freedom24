@@ -51,9 +51,9 @@
       "error": "❌ Failed to unsubscribe from <b>${ticker}</b>. Please try again later."
     },
     "list": {
-      "empty": "No active subscriptions. Use /subscribe [ticker] to start tracking a ticker.",
+      "empty": "No active subscriptions. Use /subs [ticker] to start tracking a ticker.",
       "full": "${subscriptions}${dataWarning}",
-      "item": "<b><a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a></b> ${price} /u_${index}",
+      "item": "<b><a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a></b> ${price} /r_s_${index}",
       "no_price": "No price data",
       "error": "❌ Failed to fetch subscriptions. Please try again later."
     }
@@ -67,14 +67,14 @@
       "error": "❌ Failed to set notification for <b>${ticker}</b>. Please try again later."
     },
     "remove": {
-      "invalid": "❌ Invalid notification number. Use /notifications to see your current notifications.",
+      "invalid": "❌ Invalid notification number. Use /notify to see your current notifications.",
       "success": "✅ Removed notification: <b>${ticker}</b> ${direction} ${price}",
       "error": "❌ Failed to remove notification. Please try again later."
     },
     "list": {
       "empty": "No active notifications. Use /notify [ticker] [&lt;|≥][price] to set up price alerts.",
       "full": "${notifications}${dataWarning}",
-      "item": "<b><a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a></b> ${direction}${targetPrice} (${currentPrice}) /n_${index}",
+      "item": "<b><a href=\"https://freedom24.com/charts/${ticker}\">${ticker}</a></b> ${direction}${targetPrice} (${currentPrice}) /r_n_${index}",
       "no_price": "No price data",
       "error": "❌ Failed to fetch notifications. Please try again later."
     }

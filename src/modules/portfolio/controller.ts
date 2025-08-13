@@ -9,7 +9,7 @@ import { getMarketState } from './utils.js';
 
 export const portfolioController = new Composer<CustomContext>();
 
-portfolioController.command('portfolio', async ctx => {
+portfolioController.command(['portfolio', 'p'], async ctx => {
   const { isValid, targetUser } = await validateUser(ctx);
   if (!isValid || !targetUser) return;
 
