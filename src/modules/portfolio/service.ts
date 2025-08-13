@@ -34,7 +34,7 @@ export function processPosition(position: Option): ProcessedPosition {
     percent: formatPercentageChange(percentage),
     startPrice: position.startPrice.toFixed(0),
     currentPrice: position.currentPrice.toFixed(0),
-    baseTickerPrice: position.baseTickerPrice.toFixed(0),
+    baseTickerPrice: position.baseTickerPrice.toFixed(2),
     startDate: position.startDate.toLocaleDateString(),
     endDate: position.endDate.toLocaleDateString(),
     timeLeft,
