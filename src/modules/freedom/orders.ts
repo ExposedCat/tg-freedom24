@@ -64,8 +64,3 @@ export async function fetchOptions(
     'v1',
   );
 }
-
-export function toBaseContractCodeFromYahooSymbol(symbol: string): string {
-  if (symbol.includes('.')) return symbol;
-  return `${symbol}.US`;
-}

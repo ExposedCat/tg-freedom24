@@ -1,5 +1,5 @@
 STRICTLY FOLLOW THESE INSTRUCTIONS:
-
+- You are in a project root directory. You can execute npm scripts right away.
 - Always do minimal changes to the codebase to achieve the task
 - Always write production-grade code
 - Always use `type` instead of `interface`

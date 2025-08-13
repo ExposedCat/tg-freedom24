@@ -28,8 +28,7 @@
     "dotenv": "^16.0.1",
     "grammy": "^1.24.1",
     "mongodb": "^4.9.1",
-    "ws": "^8.18.3",
-    "yahoo-finance2": "^2.13.3"
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
