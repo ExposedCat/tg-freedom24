@@ -43,6 +43,7 @@
       "usage": "Please provide a ticker to subscribe to:\n\n<code>/subscribe AAPL</code>",
       "already": "You are already subscribed to <b>${ticker}</b>",
       "success": "✅ Successfully subscribed to <b>${ticker}</b>",
+      "price": "💰 <b>${ticker}</b> ${price}",
       "error": "❌ Failed to subscribe to <b>${ticker}</b>. Please try again later."
     },
     "unsubscribe": {

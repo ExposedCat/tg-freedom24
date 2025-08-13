@@ -3,6 +3,7 @@ import { TradenetWebSocket } from '../freedom/realtime.js';
 import type { CustomContext } from '../telegram/context.js';
 import { formatPrice } from '../utils/formatting.js';
 import { addSubscription, listSubscriptions, removeSubscription } from './service.js';
+import { getTickerPrices } from '../tickers/service.js';
 
 export const subscriptionController = new Composer<CustomContext>();
 
@@ -44,6 +45,22 @@ subscriptionController.command('subs', async ctx => {
     const result = await addSubscription(ctx.db, ctx.chat.id, ticker);
     if (result.success) {
       await ctx.text('subscription.subscribe.success', { ticker });
+      let price: number | undefined;
+      try {
+        if (TradenetWebSocket.isConnected()) {
+          const realtime = await TradenetWebSocket.fetchOptionPrices([ticker], { timeoutMs: 2000 });
+          price = realtime.get(ticker);
+        }
+        if (price === undefined) {
+          const map = await getTickerPrices(ctx.db, [ticker]);
+          price = map.get(ticker);
+        }
+      } catch (error) {
+        console.error('[SUBS] Error fetching price after subscribe:', error);
+      }
+      if (price !== undefined) {
+        await ctx.text('subscription.subscribe.price', { ticker, price: formatPrice(price) });
+      }
     } else if (result.error?.includes('Already subscribed')) {
       await ctx.text('subscription.subscribe.already', { ticker });
     } else {
