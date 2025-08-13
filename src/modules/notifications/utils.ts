@@ -21,5 +21,5 @@ export function createNotificationMessage(
   const targetPrice = notification.price.toFixed(1);
   const actualPrice = currentPrice.toFixed(1);
 
-  return `🔔 ${notification.ticker} is now ${direction} $${targetPrice}!\nCurrent price: $${actualPrice}\n\nRemove this notification: /n_${notificationIndex}`;
+  return `${direction === 'above' ? '🟢' : '🔴'} ${notification.ticker} is now ${direction} $${targetPrice}!\nCurrent price: $${actualPrice}\n\nRemove this notification: /n_${notificationIndex}`;
 }
