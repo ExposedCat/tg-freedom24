@@ -1,4 +1,4 @@
-import { Composer } from 'grammy';
+import { CommandGroup } from '@grammyjs/commands';
 import { fetchPortfolio } from '../freedom/portfolio.js';
 import { TradenetWebSocket } from '../freedom/realtime.js';
 import type { CustomContext } from '../telegram/context.js';
@@ -7,7 +7,7 @@ import { formatMoneyChange, formatPercentageChange } from '../utils/formatting.j
 import { getPortfolioState, processPosition } from './service.js';
 import { getMarketState } from './utils.js';
 
-export const portfolioController = new Composer<CustomContext>();
+export const portfolioController = new CommandGroup<CustomContext>();
 
 function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof processPosition>, index?: number) {
   const tickerShort = processed.name.replace(/\.US$/, '');
@@ -23,7 +23,7 @@ function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof pr
   };
 }
 
-portfolioController.command(['portfolio', 'p'], async ctx => {
+portfolioController.command(/p|portfolio/, '', async (ctx: CustomContext) => {
   const { isValid, targetUser } = await validateUser(ctx);
   if (!isValid || !targetUser) return;
 
@@ -33,9 +33,6 @@ portfolioController.command(['portfolio', 'p'], async ctx => {
     await ctx.text('portfolio.error', { error });
     return;
   }
-
-  // biome-ignore lint/correctness/noUnusedVariables: used in legacy templates
-  const dataWarning = TradenetWebSocket.isConnected() ? '' : ctx.i18n.t('portfolio.icon.data.warning');
 
   const cashLines = portfolio.cash
     .filter(cash => cash.amount !== 0)
@@ -74,7 +71,7 @@ portfolioController.command(['portfolio', 'p'], async ctx => {
   await ctx.text('portfolio.concise', { content: contentParts.join('\n\n') });
 });
 
-portfolioController.hears(/^\/t_(\d+)$/, async ctx => {
+portfolioController.command(/t_(\d+)/, '', async (ctx: CustomContext) => {
   const { isValid, targetUser } = await validateUser(ctx);
   if (!isValid || !targetUser) return;
 
@@ -84,8 +81,7 @@ portfolioController.hears(/^\/t_(\d+)$/, async ctx => {
     return;
   }
 
-  const match = ctx.match as RegExpMatchArray;
-  const requested = Number(match[1]);
+  const requested = Number(ctx.match?.at(1));
   const position = portfolio.positions[requested - 1];
   if (!position) return;
 

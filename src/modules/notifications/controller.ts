@@ -1,12 +1,12 @@
-import { Composer } from 'grammy';
 import type { Notification } from '../chat/types.js';
 import { TradenetWebSocket } from '../freedom/realtime.js';
 import type { CustomContext } from '../telegram/context.js';
 import { formatPrice } from '../utils/formatting.js';
 import { createNotification, listNotifications, removeNotification } from './service.js';
 import { parseNotificationCondition } from './utils.js';
+import { CommandGroup } from '@grammyjs/commands';
 
-export const notificationController = new Composer<CustomContext>();
+export const notificationController = new CommandGroup<CustomContext>();
 
 async function sendNotificationList(ctx: CustomContext) {
   const { notifications, priceMap } = await listNotifications(ctx.db, ctx.chat!.id);
@@ -43,7 +43,7 @@ async function sendNotificationList(ctx: CustomContext) {
   }
 }
 
-notificationController.command('notify', async ctx => {
+notificationController.command('notify', '', async ctx => {
   if (!ctx.chat) {
     return;
   }
@@ -90,15 +90,14 @@ notificationController.command('notify', async ctx => {
   }
 });
 
-notificationController.hears(/^\/(?:r_)?n_(\d+)(?:@\w+)?$/, async ctx => {
+notificationController.command(/r_n_(\d+)/, '', async ctx => {
   if (!ctx.chat) {
     return;
   }
 
-  const match = ctx.message?.text?.match(/^\/(?:r_)?n_(\d+)(?:@\w+)?$/);
+  const match = ctx.match.at(1);
   if (!match) return;
-
-  const index = parseInt(match[1], 10) - 1;
+  const index = parseInt(match, 10) - 1;
 
   const result = await removeNotification({
     database: ctx.db,

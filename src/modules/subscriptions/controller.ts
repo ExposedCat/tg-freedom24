@@ -1,11 +1,11 @@
-import { Composer } from 'grammy';
 import { TradenetWebSocket } from '../freedom/realtime.js';
 import type { CustomContext } from '../telegram/context.js';
 import { formatPrice } from '../utils/formatting.js';
 import { addSubscription, listSubscriptions, removeSubscription } from './service.js';
 import { getTickerPrices } from '../tickers/service.js';
+import { CommandGroup } from '@grammyjs/commands';
 
-export const subscriptionController = new Composer<CustomContext>();
+export const subscriptionController = new CommandGroup<CustomContext>();
 
 async function sendSubscriptionsList(ctx: CustomContext) {
   const { subscriptions, priceMap } = await listSubscriptions(ctx.db, ctx.chat!.id);
@@ -35,7 +35,7 @@ async function sendSubscriptionsList(ctx: CustomContext) {
   }
 }
 
-subscriptionController.command('subs', async ctx => {
+subscriptionController.command('subs', '', async ctx => {
   if (!ctx.chat) {
     return;
   }
@@ -71,15 +71,14 @@ subscriptionController.command('subs', async ctx => {
   await sendSubscriptionsList(ctx);
 });
 
-subscriptionController.hears(/^\/(?:r_)?s_(\d+)(?:@\w+)?$/, async ctx => {
+subscriptionController.command(/r_s_(\d+)/, '', async ctx => {
   if (!ctx.chat) {
     return;
   }
 
-  const match = ctx.message?.text?.match(/^\/(?:r_)?s_(\d+)(?:@\w+)?$/);
+  const match = ctx.match.at(1);
   if (!match) return;
-
-  const index = parseInt(match[1], 10) - 1;
+  const index = parseInt(match, 10) - 1;
 
   const result = await removeSubscription(ctx.db, ctx.chat.id, index);
 
