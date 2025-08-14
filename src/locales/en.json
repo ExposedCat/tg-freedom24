@@ -2,6 +2,7 @@
   "start": "To start, please provide your credentials in this format:\n\n<code>/start [apikey] [secretkey] [login] [password]</code>\n\n- Get API key and secret key from <a href=\"https://freedom24.com/tradernet-api/auth-api\">Freedom24 Auth API</a>\n- Use your regular Freedom24 login and password (we will calculate and store the SID for you)\n\nNote: your credentials will be stored in the database. Do <b>not</b> enable \"Allow trading and submission of orders\" for security reasons",
   "created": "Credentials saved. Hit /start again to change them anytime. See /portfolio to see your portfolio",
   "portfolio": {
+    "refresh": "Refresh",
     "part": {
       "USD": "💵 $${amount}",
       "EUR": "💶 €${amount}",

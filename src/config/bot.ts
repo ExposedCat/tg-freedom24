@@ -8,7 +8,7 @@ import { historyController } from '../modules/history/controller.js';
 import { memeController } from '../modules/meme/controller.js';
 import { notificationController } from '../modules/notifications/controller.js';
 import { setupNotificationHandler } from '../modules/notifications/handler.js';
-import { portfolioController } from '../modules/portfolio/controller.js';
+import { portfolioCallbacks, portfolioController } from '../modules/portfolio/controller.js';
 import { startController } from '../modules/start/controller.js';
 import { subscriptionController } from '../modules/subscriptions/controller.js';
 import type { Bot } from '../modules/telegram/bot.js';
@@ -47,6 +47,7 @@ function setupMiddlewares(bot: Bot, localeEngine: I18n) {
 function setupControllers(bot: Bot) {
   bot.use(startController);
   bot.use(portfolioController);
+  bot.use(portfolioCallbacks);
   bot.use(subscriptionController);
   bot.use(notificationController);
   bot.use(historyController);
