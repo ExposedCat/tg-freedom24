@@ -11,9 +11,8 @@ export function formatPrice(amount: number, places = 2): string {
 }
 
 export function formatMoneyChange(amount: number): string {
-  const rounded = Math.round(amount);
-  const sign = rounded > 0 ? '+' : rounded < 0 ? '-' : '';
-  return `${sign}$${Math.abs(rounded)}`;
+  const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
+  return `${sign}$${Math.abs(amount).toFixed(2)}`;
 }
 
 export function formatPercentageChange(percentage: number): string {
