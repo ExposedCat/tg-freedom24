@@ -5,7 +5,7 @@ import type { CustomContext } from '../telegram/context.js';
 import { validateUser } from '../user/utils.js';
 import { formatMoneyChange, formatPercentageChange } from '../utils/formatting.js';
 import { getPortfolioState, processPosition } from './service.js';
-import { getMarketState } from './utils.js';
+import { getMarketEmoji, getMarketState, getTimeLeftForCurrentMarketState } from './utils.js';
 
 export const portfolioController = new CommandGroup<CustomContext>();
 
@@ -56,11 +56,12 @@ portfolioController.command(/p|portfolio/, '', async (ctx: CustomContext) => {
           })
           .join('\n\n');
 
+  const currentState = getMarketState();
   const totalConcise = ctx.i18n.t('portfolio.part.total_concise', {
     state: ctx.i18n.t(`portfolio.icon.state.${getPortfolioState(portfolio.totalPercentage)}`),
     total: formatMoneyChange(portfolio.total),
     percentage: formatPercentageChange(portfolio.totalPercentage),
-    marketShort: ctx.i18n.t(`portfolio.icon.market_short.${getMarketState()}`),
+    marketShort: `${getMarketEmoji(currentState)} ${getTimeLeftForCurrentMarketState()}`,
   });
 
   const contentParts = [] as string[];
