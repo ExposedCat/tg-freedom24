@@ -9,6 +9,20 @@ import { getMarketState } from './utils.js';
 
 export const portfolioController = new Composer<CustomContext>();
 
+function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof processPosition>, index?: number) {
+  const tickerShort = processed.name.replace(/\.US$/, '');
+  const strikeChangeOptional = processed.strikeChange === '$0' ? '' : ` (${processed.strikeChange})`;
+  return {
+    ...processed,
+    index,
+    state: ctx.i18n.t(`portfolio.icon.state.${processed.state}`),
+    urlTicker: processed.name,
+    tickerShort,
+    strikeChangeOptional,
+    priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
+  };
+}
+
 portfolioController.command(['portfolio', 'p'], async ctx => {
   const { isValid, targetUser } = await validateUser(ctx);
   if (!isValid || !targetUser) return;
@@ -24,6 +38,7 @@ portfolioController.command(['portfolio', 'p'], async ctx => {
   const dataWarning = TradenetWebSocket.isConnected() ? '' : ctx.i18n.t('portfolio.icon.data.warning');
 
   const cashLines = portfolio.cash
+    .filter(cash => cash.amount !== 0)
     .map(cash =>
       ctx.i18n.t(`portfolio.part.${cash.name === 'USD' || cash.name === 'EUR' ? cash.name : 'currency'}`, {
         name: cash.name,
@@ -38,17 +53,9 @@ portfolioController.command(['portfolio', 'p'], async ctx => {
       : portfolio.positions
           .map((position, index) => {
             const processed = processPosition(position);
-            const tickerShort = processed.name.replace(/\.US$/, '');
-            const strikeChangeOptional = processed.strikeChange === '$0' ? '' : ` (${processed.strikeChange})`;
-            return ctx.i18n.t('portfolio.part.option_concise', {
-              ...processed,
-              index: index + 1,
-              state: ctx.i18n.t(`portfolio.icon.state.${processed.state}`),
-              urlTicker: processed.name,
-              tickerShort,
-              strikeChangeOptional,
-              priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
-            });
+            const templateData = preparePositionData(ctx, processed, index + 1);
+            const changePercent = processed.change === '$0' ? '0%' : `${processed.change} ${processed.percent}`;
+            return ctx.i18n.t('portfolio.part.option_concise', { ...templateData, changePercent });
           })
           .join('\n\n');
 
@@ -83,9 +90,5 @@ portfolioController.hears(/^\/t_(\d+)$/, async ctx => {
   if (!position) return;
 
   const processed = processPosition(position);
-  await ctx.text('portfolio.part.option', {
-    ...processed,
-    state: ctx.i18n.t(`portfolio.icon.state.${processed.state}`),
-    priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
-  });
+  await ctx.text('portfolio.part.option', preparePositionData(ctx, processed));
 });
