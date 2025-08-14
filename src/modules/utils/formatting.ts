@@ -12,7 +12,9 @@ export function formatPrice(amount: number, places = 2): string {
 
 export function formatMoneyChange(amount: number): string {
   const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
-  return `${sign}$${Math.abs(amount).toFixed(2)}`;
+  const absolute = Math.abs(amount);
+  const formatted = absolute.toFixed(2).replace(/\.00$/, '');
+  return `${sign}$${formatted}`;
 }
 
 export function formatPercentageChange(percentage: number): string {
