@@ -101,7 +101,7 @@ portfolioController.command(/t_(\d+)/, '', async (ctx: CustomContext) => {
     return;
   }
 
-  const requested = Number(ctx.match?.at(1));
+  const requested = Number(ctx.commandMatch.match?.at(1));
   const position = portfolio.positions[requested - 1];
   if (!position) return;
 

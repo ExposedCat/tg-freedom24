@@ -5,6 +5,7 @@ import type { Chat } from '../chat/types.js';
 import type { Database } from '../database/types.js';
 import type { User } from '../user/types.js';
 import type { Extra } from './bot.js';
+import type { CommandsFlavor } from '@grammyjs/commands';
 
 export interface Custom<C extends Context> {
   text: (text: string, templateData?: TemplateData, extra?: Extra) => ReturnType<C['reply']>;
@@ -22,7 +23,8 @@ export type CustomContextMethods = Custom<Context>;
 export type CustomContext = Context &
   Custom<Context> &
   I18nContextFlavor &
-  // biome-ignore lint/complexity/noBannedTypes: <explanation>
+  CommandsFlavor &
+  // biome-ignore lint/complexity/noBannedTypes: empty session
   SessionFlavor<{}>;
 
 export function createReplyWithTextFunc(ctx: CustomContext): CustomContextMethods['text'] {

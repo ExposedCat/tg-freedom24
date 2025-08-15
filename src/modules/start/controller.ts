@@ -5,6 +5,7 @@ import type { CustomContext } from '../telegram/context.js';
 import { createOrUpdateUser, findUserById } from '../user/data.js';
 
 export const startController = new Composer<CustomContext>();
+
 startController.command('start', async ctx => {
   if (!ctx.match || !ctx.from) {
     await ctx.text('start');
