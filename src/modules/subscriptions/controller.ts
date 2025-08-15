@@ -2,7 +2,7 @@ import { TradenetWebSocket } from '../freedom/realtime.js';
 import type { CustomContext } from '../telegram/context.js';
 import { formatPrice } from '../utils/formatting.js';
 import { addSubscription, listSubscriptions, removeSubscription } from './service.js';
-import { getTickerPrices } from '../tickers/service.js';
+import { getTickerDetails } from '../tickers/service.js';
 import { CommandGroup } from '@grammyjs/commands';
 
 export const subscriptionController = new CommandGroup<CustomContext>();
@@ -52,8 +52,8 @@ subscriptionController.command('subs', '', async ctx => {
           price = realtime.get(ticker);
         }
         if (price === undefined) {
-          const map = await getTickerPrices(ctx.db, [ticker]);
-          price = map.get(ticker);
+          const map = await getTickerDetails(ctx.db, [ticker]);
+          price = map.get(ticker)?.price;
         }
       } catch (error) {
         console.error('[SUBS] Error fetching price after subscribe:', error);

@@ -1,5 +1,5 @@
 import type { Option } from '../freedom/portfolio.js';
-import { formatMoneyChange, formatPercentageChange, formatTimeLeft } from '../utils/formatting.js';
+import { formatMoneyChange, formatPercentageChange, formatTimeLeft, formatPrice } from '../utils/formatting.js';
 
 export type ProcessedPosition = {
   state: string;
@@ -17,6 +17,7 @@ export type ProcessedPosition = {
   strike: string;
   strikeChange: string;
   usingMarketPrice: boolean;
+  greeks: string;
 };
 
 export function processPosition(position: Option): ProcessedPosition {
@@ -25,6 +26,10 @@ export function processPosition(position: Option): ProcessedPosition {
   const timeLeft = formatTimeLeft(position.startDate, position.endDate);
   const timeFromNow = formatTimeLeft(new Date(), position.endDate);
   const strikeChange = position.baseTickerPrice - position.strike;
+  const greeksParts: string[] = [];
+  if (typeof position.delta === 'number') greeksParts.push(`+1$ → ${formatMoneyChange(position.delta)}`);
+  if (typeof position.theta === 'number') greeksParts.push(`+1d → ${formatMoneyChange(position.theta)}`);
+  const greeks = greeksParts.join('\n');
 
   return {
     state: profit > 0 ? 'profit' : profit < 0 ? 'loss' : 'zero',
@@ -39,9 +44,10 @@ export function processPosition(position: Option): ProcessedPosition {
     endDate: position.endDate.toLocaleDateString(),
     timeLeft,
     timeFromNow,
-    strike: formatMoneyChange(position.strike),
+    strike: formatPrice(position.strike),
     strikeChange: formatMoneyChange(strikeChange),
     usingMarketPrice: position.usingMarketPrice,
+    greeks,
   };
 }
 

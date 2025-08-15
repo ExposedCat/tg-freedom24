@@ -9,6 +9,25 @@ type FetchPricesOptions = {
   requireAll?: boolean;
 };
 
+type RealtimePayload =
+  | [
+      'q',
+      {
+        c: string;
+        contract_multiplier?: number;
+        bbp?: number;
+        ltp?: number;
+        delta?: number;
+        theta?: number;
+      },
+    ]
+  | [
+      'userData',
+      {
+        mode: 'prod' | 'demo';
+      },
+    ];
+
 export class TradenetWebSocket {
   private static instance: TradenetWebSocket | null = null;
   private ws: WebSocket | null = null;
@@ -127,7 +146,7 @@ export class TradenetWebSocket {
       this.ws.on('message', async data => {
         try {
           const rawMessage = data.toString();
-          const message = JSON.parse(rawMessage);
+          const message: RealtimePayload = JSON.parse(rawMessage);
 
           if (Array.isArray(message) && message.length >= 2) {
             const [type, payload] = message;
@@ -138,16 +157,18 @@ export class TradenetWebSocket {
               this.isAuthenticated = true;
               await this.initializeAllSubscriptions();
               resolve(true);
-            } else if (type === 'q' && payload.c && payload.ltp !== undefined) {
+            } else if (type === 'q' && payload.c) {
               const ticker = payload.c;
 
               const isOption = ticker.startsWith('+');
               const multiplier = isOption ? payload.contract_multiplier || 100 : 1;
-              const bestBidOrLast = typeof payload.bbp === 'number' && payload.bbp > 0 ? payload.bbp : payload.ltp;
+              const bestBidOrLast = payload.bbp ?? payload.ltp ?? 0;
               const price = bestBidOrLast * multiplier;
-              if (price > 0) {
-                await this.savePriceUpdate(ticker, price);
-                await this.notifyPriceUpdate(ticker, price);
+              if (price > 0 || payload.delta !== undefined || payload.theta !== undefined) {
+                await this.savePriceUpdate(ticker, price, payload.delta, payload.theta);
+                if (price > 0) {
+                  await this.notifyPriceUpdate(ticker, price);
+                }
               }
             }
           }
@@ -286,15 +307,22 @@ export class TradenetWebSocket {
     this.addSubscriptionsAndSend(optionNames);
   }
 
-  private async savePriceUpdate(name: string, price: number): Promise<void> {
-    if (!this.database || price === 0) {
+  private async savePriceUpdate(name: string, price: number, delta?: number, theta?: number): Promise<void> {
+    if (!this.database) {
       return;
     }
-
     try {
       await this.database.tickers.updateOne(
         { name },
-        { $set: { name, lastPrice: price, lastUpdated: new Date() } },
+        {
+          $set: {
+            name,
+            ...(price > 0 && { lastPrice: price }),
+            lastUpdated: new Date(),
+            delta,
+            theta,
+          },
+        },
         { upsert: true },
       );
     } catch (error) {
@@ -324,7 +352,7 @@ export class TradenetWebSocket {
       return new Map();
     }
 
-    const timeoutMs = options?.timeoutMs ?? 3000;
+    const timeoutMs = options?.timeoutMs ?? 2000;
     const requireAll = options?.requireAll ?? false;
 
     const originalSubscriptions = new Set(this.desiredSubscriptions);

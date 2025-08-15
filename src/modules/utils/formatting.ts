@@ -7,13 +7,13 @@ const UNITS = [
 ];
 
 export function formatPrice(amount: number, places = 2): string {
-  return `$${amount.toFixed(places)}`;
+  return `$${formatPlain(amount, places)}`;
 }
 
 export function formatMoneyChange(amount: number): string {
   const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
   const absolute = Math.abs(amount);
-  const formatted = absolute.toFixed(2).replace(/\.00$/, '');
+  const formatted = formatPlain(absolute, 2);
   return `${sign}$${formatted}`;
 }
 
@@ -41,4 +41,8 @@ export function formatTimeLeft(startDate: Date, endDate: Date): string {
   }
 
   return result.length > 0 ? result.join(' ') : 'now';
+}
+
+function formatPlain(amount: number, places = 2): string {
+  return amount.toFixed(places).replace(/\.00$/, '');
 }

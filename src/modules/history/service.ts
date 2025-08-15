@@ -1,5 +1,5 @@
 import type { Database } from '../database/types.js';
-import { getTickerPrices } from '../tickers/service.js';
+import { getTickerDetails } from '../tickers/service.js';
 import { formatMoneyChange } from '../utils/formatting.js';
 import type {
   HistoryEntry,
@@ -131,7 +131,12 @@ export async function analyzePortfolioPerformance(
   dbPrices: Map<string, number>;
 }> {
   const openInstrumentNames = [...new Set(openPositions.map(pos => pos.instrumentName))];
-  const dbPrices = await getTickerPrices(database, openInstrumentNames);
+  const dbDetails = await getTickerDetails(database, openInstrumentNames);
+  const dbPrices = new Map<string, number>();
+  for (const name of openInstrumentNames) {
+    const details = dbDetails.get(name);
+    if (details) dbPrices.set(name, details.price);
+  }
 
   const tickerSummary = new Map<string, TickerSummary>();
 

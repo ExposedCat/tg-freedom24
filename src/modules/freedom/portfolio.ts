@@ -1,5 +1,5 @@
 import type { Database } from '../database/types.js';
-import { getTickerPrices } from '../tickers/service.js';
+import { getTickerDetails } from '../tickers/service.js';
 import { makeApiRequest } from './api.js';
 import { fetchOrdersHistory } from './orders.js';
 import { TradenetWebSocket } from './realtime.js';
@@ -15,6 +15,8 @@ export type Option = {
   baseTickerPrice: number;
   strike: number;
   usingMarketPrice: boolean;
+  delta?: number;
+  theta?: number;
 };
 
 export type Cash = {
@@ -64,7 +66,7 @@ export async function fetchPortfolio(
     const baseTickerNames = response.result.ps.pos.map(pos => pos.base_contract_code);
     const allTickerNames = [...tickerNames, ...baseTickerNames];
 
-    const dbPrices = await getTickerPrices(database, allTickerNames);
+    const dbDetails = await getTickerDetails(database, allTickerNames);
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -84,8 +86,8 @@ export async function fetchPortfolio(
     }
 
     const positions = response.result.ps.pos.map(position => {
-      const dbPrice = dbPrices.get(position.i);
-      const baseTickerPrice = dbPrices.get(position.base_contract_code) ?? 0;
+      const dbPrice = dbDetails.get(position.i)?.price;
+      const baseTickerPrice = dbDetails.get(position.base_contract_code)?.price ?? 0;
       const currentPrice = (dbPrice ?? position.mkt_price * position.face_val_a) * position.q;
       const usingMarketPrice = dbPrice === undefined;
       const startDate = orderDates.get(position.i) || new Date(0);
@@ -100,6 +102,8 @@ export async function fetchPortfolio(
         baseTickerPrice,
         strike: Number(position.i.split('C').at(-1)),
         usingMarketPrice,
+        delta: dbDetails.get(position.i)?.delta,
+        theta: dbDetails.get(position.i)?.theta,
       };
     });
 
