@@ -25,6 +25,12 @@ export async function makeApiRequest<T = any>(
       if (res.ok) {
         return await res.json();
       }
+      try {
+        const bodyText = await res.text();
+        console.error(`[API] ${cmd} failed: ${res.status} ${res.statusText} - ${bodyText.slice(0, 500)}`);
+      } catch {
+        console.error(`[API] ${cmd} failed: ${res.status} ${res.statusText}`);
+      }
       return null;
     }
 
@@ -58,6 +64,12 @@ export async function makeApiRequest<T = any>(
 
     if (res.ok) {
       return await res.json();
+    }
+    try {
+      const bodyText = await res.text();
+      console.error(`[API] ${cmd} failed: ${res.status} ${res.statusText} - ${bodyText.slice(0, 500)}`);
+    } catch {
+      console.error(`[API] ${cmd} failed: ${res.status} ${res.statusText}`);
     }
     return null;
   } catch (error) {

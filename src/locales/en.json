@@ -8,7 +8,7 @@
       "EUR": "💶 €${amount}",
       "currency": "${name} ${amount}",
       "option": "${state} <a href=\"https://freedom24.com/charts/${name}\">${name}</a> <b>${change} ${percent}</b>\n<code>${ticker}</code>\n$${startPrice} → $${currentPrice} ($${baseTickerPrice})${priceWarning}\n${startDate} → ${endDate} (${timeLeft})\n${timeFromNow} → ${strike} (${strikeChange})\n${greeks}",
-      "option_concise": "${state} <a href=\"https://freedom24.com/charts/${urlTicker}\">${tickerShort}</a> <b>${changePercent}</b> /t_${index}\n$${currentPrice} · $${baseTickerPrice}${strikeChangeOptional}${priceWarning} · ${timeFromNow}",
+      "option_concise": "${state} <a href=\"https://freedom24.com/charts/${urlTicker}\">${tickerShort}</a> <b>${changePercent}</b> /t_${index}\n$${currentPrice} · $${baseTickerPrice}${strikeChangeOptional}${priceWarning} · ${timeFromNow}${openOrderOptional}",
       "total": "${state} ${total} ${dataWarning}",
       "total_concise": "${state} ${total} ${percentage} ${marketShort}",
       "no_positions": "<i>No open positions</i>"
@@ -46,7 +46,7 @@
     },
     "full": "${market}\n———\n\n${cash}\n\n${positions}\n\n———\n${total}",
     "concise": "${content}",
-    "error": "Failed to fetch portfolio: ${error}"
+    "error": "Failed to fetch portfolio: ${error}. Use /start to re-enter credentials."
   },
   "subscription": {
     "subscribe": {

@@ -17,6 +17,8 @@ export type Option = {
   usingMarketPrice: boolean;
   delta?: number;
   theta?: number;
+  openOrderPrice?: number;
+  openOrderTotal?: number;
 };
 
 export type Cash = {
@@ -78,10 +80,20 @@ export async function fetchPortfolio(
 
     const orderHistory = await fetchOrdersHistory(apiKey, secretKey, twoYearsAgo, tomorrow);
     const orderDates = new Map<string, Date>();
+    const lastOpenSellByInstr = new Map<string, { price: number; date: Date }>();
 
     if (orderHistory?.orders?.order) {
       for (const order of orderHistory.orders.order) {
-        orderDates.set(order.instr, new Date(order.date));
+        const date = new Date(order.date);
+        orderDates.set(order.instr, date);
+        if (order.oper === 3 && order.stat !== 21) {
+          const prev = lastOpenSellByInstr.get(order.instr);
+          if (!prev || date > prev.date) {
+            if (typeof order.p === 'number' && order.p > 0) {
+              lastOpenSellByInstr.set(order.instr, { price: order.p, date });
+            }
+          }
+        }
       }
     }
 
@@ -91,6 +103,9 @@ export async function fetchPortfolio(
       const currentPrice = (dbPrice ?? position.mkt_price * position.face_val_a) * position.q;
       const usingMarketPrice = dbPrice === undefined;
       const startDate = orderDates.get(position.i) || new Date(0);
+      const openSell = lastOpenSellByInstr.get(position.i);
+      const openOrderPrice = openSell?.price;
+      const openOrderTotal = openOrderPrice ? openOrderPrice * position.face_val_a * position.q : undefined;
 
       return {
         ticker: position.i,
@@ -104,6 +119,8 @@ export async function fetchPortfolio(
         usingMarketPrice,
         delta: dbDetails.get(position.i)?.delta,
         theta: dbDetails.get(position.i)?.theta,
+        openOrderPrice,
+        openOrderTotal,
       };
     });
 

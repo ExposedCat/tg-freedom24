@@ -14,6 +14,7 @@ export const portfolioCallbacks = new Composer<CustomContext>();
 function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof processPosition>, index?: number) {
   const tickerShort = processed.name.replace(/\.US$/, '');
   const strikeChangeOptional = processed.strikeChange === '$0' ? '' : ` (${processed.strikeChange})`;
+  const openOrderOptional = processed.openOrder ? `\n${processed.openOrder}` : '';
   return {
     ...processed,
     index,
@@ -21,6 +22,7 @@ function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof pr
     urlTicker: processed.name,
     tickerShort,
     strikeChangeOptional,
+    openOrderOptional,
     priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
   };
 }

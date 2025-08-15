@@ -18,6 +18,7 @@ export type ProcessedPosition = {
   strikeChange: string;
   usingMarketPrice: boolean;
   greeks: string;
+  openOrder?: string;
 };
 
 export function processPosition(position: Option): ProcessedPosition {
@@ -27,9 +28,25 @@ export function processPosition(position: Option): ProcessedPosition {
   const timeFromNow = formatTimeLeft(new Date(), position.endDate);
   const strikeChange = position.baseTickerPrice - position.strike;
   const greeksParts: string[] = [];
-  if (typeof position.delta === 'number') greeksParts.push(`+1$ → ${formatMoneyChange(position.delta)}`);
-  if (typeof position.theta === 'number') greeksParts.push(`+1d → ${formatMoneyChange(position.theta)}`);
+  const formatScaledGreek = (value: number, unit: string): string => {
+    let scale = 1;
+    let displayed = value * scale;
+    while (value !== 0 && Math.abs(displayed) < 0.005 && scale < 100) {
+      scale *= 10;
+      displayed = value * scale;
+    }
+    const scaleLabel = scale === 1 ? '+1' : `+${scale}`;
+    return `${scaleLabel}${unit} → ${formatPrice(displayed)}`;
+  };
+  if (typeof position.delta === 'number') greeksParts.push(formatScaledGreek(position.delta, '$'));
+  if (typeof position.theta === 'number') greeksParts.push(formatScaledGreek(position.theta, 'd'));
   const greeks = greeksParts.join('\n');
+
+  let openOrder: string | undefined;
+  if (typeof position.openOrderPrice === 'number' && typeof position.openOrderTotal === 'number') {
+    const projectedProfit = position.openOrderTotal - position.startPrice;
+    openOrder = `💰 ${formatPrice(position.openOrderTotal)} ${formatMoneyChange(projectedProfit)}`;
+  }
 
   return {
     state: profit > 0 ? 'profit' : profit < 0 ? 'loss' : 'zero',
@@ -44,10 +61,11 @@ export function processPosition(position: Option): ProcessedPosition {
     endDate: position.endDate.toLocaleDateString(),
     timeLeft,
     timeFromNow,
-    strike: formatPrice(position.strike),
+    strike: formatMoneyChange(position.strike),
     strikeChange: formatMoneyChange(strikeChange),
     usingMarketPrice: position.usingMarketPrice,
     greeks,
+    openOrder,
   };
 }
 
