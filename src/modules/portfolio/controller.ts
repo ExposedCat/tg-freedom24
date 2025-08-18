@@ -4,6 +4,7 @@ import { fetchPortfolio } from '../freedom/portfolio.js';
 import type { UserPortfolio } from '../freedom/portfolio.js';
 import type { CustomContext } from '../telegram/context.js';
 import { validateUser } from '../user/utils.js';
+import { findUserById } from '../user/data.js';
 import { formatMoneyChange, formatPercentageChange } from '../utils/formatting.js';
 import { getPortfolioState, processPosition } from './service.js';
 import { getMarketEmoji, getMarketState, getTimeLeftForCurrentMarketState } from './utils.js';
@@ -66,9 +67,9 @@ function buildPortfolioContent(ctx: CustomContext, portfolio: UserPortfolio): st
   return contentParts.join('\n\n');
 }
 
-function getRefreshMarkup(ctx: CustomContext) {
+function getRefreshMarkup(ctx: CustomContext, ownerUserId: number) {
   return {
-    inline_keyboard: [[{ text: ctx.i18n.t('portfolio.refresh'), callback_data: 'portfolio_refresh' }]],
+    inline_keyboard: [[{ text: ctx.i18n.t('portfolio.refresh'), callback_data: `portfolio_refresh:${ownerUserId}` }]],
   };
 }
 
@@ -88,7 +89,7 @@ portfolioController.command(/p|portfolio/, '', async (ctx: CustomContext) => {
     'portfolio.concise',
     { content },
     {
-      reply_markup: getRefreshMarkup(ctx),
+      reply_markup: getRefreshMarkup(ctx, targetUser.userId),
     },
   );
 });
@@ -111,9 +112,13 @@ portfolioController.command(/t_(\d+)/, '', async (ctx: CustomContext) => {
   await ctx.text('portfolio.part.option', preparePositionData(ctx, processed));
 });
 
-portfolioCallbacks.callbackQuery('portfolio_refresh', async (ctx: CustomContext) => {
-  const { isValid, targetUser } = await validateUser(ctx);
-  if (!isValid || !targetUser) return;
+portfolioCallbacks.callbackQuery(/portfolio_refresh:(\d+)/, async (ctx: CustomContext) => {
+  const ownerId = Number(ctx.callbackQuery!.data!.split(':')[1]);
+  const targetUser = await findUserById(ctx.db, ownerId);
+  if (!targetUser) {
+    await ctx.answerCallbackQuery();
+    return;
+  }
 
   const { error, ...portfolio } = await fetchPortfolio(targetUser.apiKey, targetUser.secretKey, ctx.db);
   if (error) {
@@ -128,10 +133,10 @@ portfolioCallbacks.callbackQuery('portfolio_refresh', async (ctx: CustomContext)
     await ctx.editMessageText(text, {
       parse_mode: 'HTML',
       link_preview_options: { is_disabled: true },
-      reply_markup: getRefreshMarkup(ctx),
+      reply_markup: getRefreshMarkup(ctx, targetUser.userId),
     });
-  } catch (error) {
-    console.error('[PORTFOLIO] Failed to edit message:', error);
+  } catch {
+    // ignore
   }
 
   await ctx.answerCallbackQuery();
