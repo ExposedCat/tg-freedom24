@@ -17,10 +17,9 @@ export function formatMoneyChange(amount: number): string {
   return `${sign}$${formatted}`;
 }
 
-export function formatPercentageChange(percentage: number): string {
-  const rounded = Math.round(percentage);
-  const sign = rounded > 0 ? '+' : rounded < 0 ? '-' : '';
-  return `${sign}${Math.abs(rounded)}%`;
+export function formatPercentageChange(percentage: number, places = 0): string {
+  const sign = percentage > 0 ? '+' : '';
+  return `${sign}${percentage.toFixed(places)}%`;
 }
 
 export function formatTimeLeft(startDate: Date, endDate: Date): string {

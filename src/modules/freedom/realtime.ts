@@ -19,6 +19,7 @@ type RealtimePayload =
         ltp?: number;
         delta?: number;
         theta?: number;
+        ClosePrice?: number;
       },
     ]
   | [
@@ -164,8 +165,9 @@ export class TradenetWebSocket {
               const multiplier = isOption ? payload.contract_multiplier || 100 : 1;
               const bestBidOrLast = payload.bbp ?? payload.ltp ?? 0;
               const price = bestBidOrLast * multiplier;
-              if (price > 0 || payload.delta !== undefined || payload.theta !== undefined) {
-                await this.savePriceUpdate(ticker, price, payload.delta, payload.theta);
+              const closePrice = payload.ClosePrice;
+              if (price > 0 || closePrice !== undefined || payload.delta !== undefined || payload.theta !== undefined) {
+                await this.savePriceUpdate(ticker, price, closePrice, payload.delta, payload.theta);
                 if (price > 0) {
                   await this.notifyPriceUpdate(ticker, price);
                 }
@@ -276,6 +278,11 @@ export class TradenetWebSocket {
             allSubscriptions.add(ticker);
           }
         }
+        if (chat.market && Array.isArray(chat.market)) {
+          for (const ticker of chat.market) {
+            allSubscriptions.add(ticker);
+          }
+        }
         if (chat.notifications && Array.isArray(chat.notifications)) {
           for (const notification of chat.notifications) {
             allSubscriptions.add(notification.ticker);
@@ -307,7 +314,13 @@ export class TradenetWebSocket {
     this.addSubscriptionsAndSend(optionNames);
   }
 
-  private async savePriceUpdate(name: string, price: number, delta?: number, theta?: number): Promise<void> {
+  private async savePriceUpdate(
+    name: string,
+    price: number,
+    closePrice?: number,
+    delta?: number,
+    theta?: number,
+  ): Promise<void> {
     if (!this.database) {
       return;
     }
@@ -318,6 +331,7 @@ export class TradenetWebSocket {
           $set: {
             name,
             ...(price > 0 && { lastPrice: price }),
+            ...(closePrice !== undefined && { closePrice }),
             lastUpdated: new Date(),
             delta,
             theta,

@@ -76,7 +76,7 @@ subscriptionController.command(/r_s_(\d+)/, '', async ctx => {
     return;
   }
 
-  const match = ctx.match.at(1);
+  const match = ctx.commandMatch.match?.at(1);
   if (!match) return;
   const index = parseInt(match, 10) - 1;
 

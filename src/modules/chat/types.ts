@@ -10,4 +10,5 @@ export type Chat = {
   chatId: number;
   subscriptions?: string[];
   notifications?: Notification[];
+  market?: string[];
 };

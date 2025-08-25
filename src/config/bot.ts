@@ -11,6 +11,7 @@ import { setupNotificationHandler } from '../modules/notifications/handler.js';
 import { portfolioCallbacks, portfolioController } from '../modules/portfolio/controller.js';
 import { startController } from '../modules/start/controller.js';
 import { subscriptionController } from '../modules/subscriptions/controller.js';
+import { marketController } from '../modules/market/controller.js';
 import type { Bot } from '../modules/telegram/bot.js';
 import { createReplyWithTextFunc } from '../modules/telegram/context.js';
 import { findUserById } from '../modules/user/data.js';
@@ -49,6 +50,7 @@ function setupControllers(bot: Bot) {
   bot.use(portfolioController);
   bot.use(portfolioCallbacks);
   bot.use(subscriptionController);
+  bot.use(marketController);
   bot.use(notificationController);
   bot.use(historyController);
   bot.use(memeController);

@@ -4,4 +4,5 @@ export type Ticker = {
   lastUpdated?: Date;
   delta?: number;
   theta?: number;
+  closePrice?: number;
 };

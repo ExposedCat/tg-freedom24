@@ -90,6 +90,20 @@
       "error": "❌ Failed to fetch notifications. Please try again later."
     }
   },
+  "market": {
+    "add": {
+      "success": "✅ Added: ${tickers}",
+      "already": "You already added these tickers"
+    },
+    "remove": {
+      "invalid": "❌ Invalid market number. Use /market list to see your watchlist.",
+      "success": "✅ Removed from market: <b>${ticker}</b>"
+    },
+    "list": {
+      "empty": "No tickers in market watchlist. Use /market [ticker1,ticker2] to add.",
+      "full": "${market}${dataWarning}"
+    }
+  },
   "history": {
     "empty": "No completed trades found",
     "error": "Failed to fetch order history: ${error}",
