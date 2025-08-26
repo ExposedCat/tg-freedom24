@@ -99,25 +99,40 @@ export async function buildMarketList(database: Database, chatId: number): Promi
     tickerDocuments.map(ticker => [ticker.name, { lastPrice: ticker.lastPrice, closePrice: ticker.closePrice }]),
   );
 
-  const lines: string[] = [];
-  for (let index = 0; index < marketTickers.length; index++) {
-    const tickerName = marketTickers[index];
+  type MarketItem = {
+    tickerName: string;
+    originalIndex: number;
+    percent?: number;
+    icon: string;
+    percentText: string;
+  };
+
+  const items: MarketItem[] = [];
+  for (let originalIndex = 0; originalIndex < marketTickers.length; originalIndex++) {
+    const tickerName = marketTickers[originalIndex];
     const prices = priceByTicker.get(tickerName);
     let icon = '🟠';
     let percentText = '';
+    let percent: number | undefined;
     if (
       prices &&
       typeof prices.lastPrice === 'number' &&
       typeof prices.closePrice === 'number' &&
       prices.closePrice > 0
     ) {
-      const percent = ((prices.lastPrice - prices.closePrice) / prices.closePrice) * 100;
+      percent = ((prices.lastPrice - prices.closePrice) / prices.closePrice) * 100;
       icon = percent > 0 ? '🟢' : percent < 0 ? '🔴' : '🟠';
       percentText = formatPercentageChange(percent, 2);
     }
-    lines.push(
-      `${icon} <b><a href="https://freedom24.com/charts/${tickerName}">${tickerName}</a></b> ${percentText} /r_m_${index + 1}`,
-    );
+    items.push({ tickerName, originalIndex, percent, icon, percentText });
   }
-  return lines;
+
+  const numericValue = (value: number | undefined) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : -Infinity;
+  items.sort((firstItem, secondItem) => numericValue(secondItem.percent) - numericValue(firstItem.percent));
+
+  return items.map(
+    item =>
+      `${item.icon} <b><a href="https://freedom24.com/charts/${item.tickerName}">${item.tickerName}</a></b> ${item.percentText} /r_m_${item.originalIndex + 1}`,
+  );
 }
