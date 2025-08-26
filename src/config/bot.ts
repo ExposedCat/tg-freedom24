@@ -12,6 +12,7 @@ import { portfolioCallbacks, portfolioController } from '../modules/portfolio/co
 import { startController } from '../modules/start/controller.js';
 import { subscriptionController } from '../modules/subscriptions/controller.js';
 import { marketController } from '../modules/market/controller.js';
+import { marketCallbacks } from '../modules/market/callbacks.js';
 import type { Bot } from '../modules/telegram/bot.js';
 import { createReplyWithTextFunc } from '../modules/telegram/context.js';
 import { findUserById } from '../modules/user/data.js';
@@ -51,6 +52,7 @@ function setupControllers(bot: Bot) {
   bot.use(portfolioCallbacks);
   bot.use(subscriptionController);
   bot.use(marketController);
+  bot.use(marketCallbacks);
   bot.use(notificationController);
   bot.use(historyController);
   bot.use(memeController);

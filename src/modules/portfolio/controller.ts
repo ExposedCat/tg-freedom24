@@ -8,6 +8,7 @@ import { findUserById } from '../user/data.js';
 import { formatMoneyChange, formatPercentageChange } from '../utils/formatting.js';
 import { getPortfolioState, processPosition } from './service.js';
 import { getMarketEmoji, getMarketState, getTimeLeftForCurrentMarketState } from './utils.js';
+import { buildRefreshMarkup } from '../telegram/markup.js';
 
 export const portfolioController = new CommandGroup<CustomContext>();
 export const portfolioCallbacks = new Composer<CustomContext>();
@@ -68,9 +69,7 @@ function buildPortfolioContent(ctx: CustomContext, portfolio: UserPortfolio): st
 }
 
 function getRefreshMarkup(ctx: CustomContext, ownerUserId: number) {
-  return {
-    inline_keyboard: [[{ text: ctx.i18n.t('portfolio.refresh'), callback_data: `portfolio_refresh:${ownerUserId}` }]],
-  };
+  return buildRefreshMarkup(ctx.i18n.t('portfolio.refresh'), `portfolio_refresh:${ownerUserId}`);
 }
 
 portfolioController.command(/p|portfolio/, '', async (ctx: CustomContext) => {

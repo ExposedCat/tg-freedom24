@@ -2,6 +2,7 @@ import { CommandGroup } from '@grammyjs/commands';
 import type { CustomContext } from '../telegram/context.js';
 import { TradenetWebSocket } from '../freedom/realtime.js';
 import { addMarketTickers, buildMarketList, buildMarketSummary, removeMarketTicker } from './service.js';
+import { buildRefreshMarkup } from '../telegram/markup.js';
 
 export const marketController = new CommandGroup<CustomContext>();
 
@@ -23,10 +24,16 @@ async function sendMarketList(ctx: CustomContext) {
     return;
   }
   const listBody = lines.join('\n');
-  await ctx.text('market.list.full', {
-    market: listBody,
-    dataWarning: TradenetWebSocket.isConnected() ? '' : ` ${ctx.i18n.t('portfolio.icon.data.warning')}`,
-  });
+  await ctx.text(
+    'market.list.full',
+    {
+      market: listBody,
+      dataWarning: TradenetWebSocket.isConnected() ? '' : ` ${ctx.i18n.t('portfolio.icon.data.warning')}`,
+    },
+    {
+      reply_markup: buildRefreshMarkup(ctx.i18n.t('portfolio.refresh'), 'market_refresh'),
+    },
+  );
 }
 
 async function handleMarketCommand(ctx: CustomContext) {
