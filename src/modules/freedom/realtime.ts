@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import type { Database } from '../database/types.js';
+import { getMarketState } from '../portfolio/utils.js';
 import { makeApiRequest } from './api.js';
 
 type PriceUpdateCallback = (ticker: string, price: number) => Promise<void>;
@@ -163,7 +164,7 @@ export class TradenetWebSocket {
 
               const isOption = ticker.startsWith('+');
               const multiplier = isOption ? payload.contract_multiplier || 100 : 1;
-              const bestBidOrLast = payload.bbp ?? payload.ltp ?? 0;
+              const bestBidOrLast = (getMarketState() === 'open' ? payload.bbp : payload.ltp) ?? 0;
               const price = bestBidOrLast * multiplier;
               const closePrice = payload.ClosePrice;
               if (price > 0 || closePrice !== undefined || payload.delta !== undefined || payload.theta !== undefined) {

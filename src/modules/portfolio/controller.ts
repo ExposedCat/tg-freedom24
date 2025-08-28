@@ -18,6 +18,7 @@ function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof pr
   const strikeChangeOptional = processed.strikeChange === '$0' ? '' : ` (${processed.strikeChange})`;
   const breakEvenChangeOptional = processed.breakEvenChange === '$0' ? '' : ` (${processed.breakEvenChange})`;
   const openOrderOptional = processed.openOrder ? `\n${processed.openOrder}` : '';
+  const openOrderExtendedOptional = processed.openOrderExtended ? `\n${processed.openOrderExtended}` : '';
   return {
     ...processed,
     index,
@@ -27,6 +28,7 @@ function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof pr
     strikeChangeOptional,
     breakEvenChangeOptional,
     openOrderOptional,
+    openOrderExtendedOptional,
     priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
   };
 }

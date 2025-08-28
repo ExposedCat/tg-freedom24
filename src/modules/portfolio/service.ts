@@ -21,6 +21,7 @@ export type ProcessedPosition = {
   usingMarketPrice: boolean;
   greeks: string;
   openOrder?: string;
+  openOrderExtended?: string;
 };
 
 export function processPosition(position: Option): ProcessedPosition {
@@ -48,9 +49,12 @@ export function processPosition(position: Option): ProcessedPosition {
   const greeks = greeksParts.join('\n');
 
   let openOrder: string | undefined;
+  let openOrderExtended: string | undefined;
   if (typeof position.openOrderPrice === 'number' && typeof position.openOrderTotal === 'number') {
     const projectedProfit = position.openOrderTotal - position.startPrice;
     openOrder = `💰 ${formatPrice(position.openOrderTotal)} ${formatMoneyChange(projectedProfit)}`;
+    const remainingToTarget = position.openOrderTotal - position.currentPrice;
+    openOrderExtended = `💰 ${formatPrice(position.openOrderTotal)} ${formatMoneyChange(projectedProfit)} (${formatMoneyChange(remainingToTarget)})`;
   }
 
   return {
@@ -73,6 +77,7 @@ export function processPosition(position: Option): ProcessedPosition {
     usingMarketPrice: position.usingMarketPrice,
     greeks,
     openOrder,
+    openOrderExtended,
   };
 }
 
