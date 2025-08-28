@@ -1,5 +1,5 @@
 import type { Option } from '../freedom/portfolio.js';
-import { formatMoneyChange, formatPercentageChange, formatTimeLeft, formatPrice } from '../utils/formatting.js';
+import { formatMoneyChange, formatPercentageChange, formatPrice, formatTimeLeft } from '../utils/formatting.js';
 
 export type ProcessedPosition = {
   state: string;
@@ -16,6 +16,8 @@ export type ProcessedPosition = {
   timeFromNow: string;
   strike: string;
   strikeChange: string;
+  breakEven: string;
+  breakEvenChange: string;
   usingMarketPrice: boolean;
   greeks: string;
   openOrder?: string;
@@ -27,6 +29,9 @@ export function processPosition(position: Option): ProcessedPosition {
   const timeLeft = formatTimeLeft(position.startDate, position.endDate);
   const timeFromNow = formatTimeLeft(new Date(), position.endDate);
   const strikeChange = position.baseTickerPrice - position.strike;
+  const breakEvenUnderlying =
+    position.type === 'put' ? position.strike - position.entryUnitPrice : position.strike + position.entryUnitPrice;
+  const breakEvenChange = position.baseTickerPrice - breakEvenUnderlying;
   const greeksParts: string[] = [];
   const formatScaledGreek = (value: number, unit: string): string => {
     let scale = 1;
@@ -63,6 +68,8 @@ export function processPosition(position: Option): ProcessedPosition {
     timeFromNow,
     strike: formatMoneyChange(position.strike),
     strikeChange: formatMoneyChange(strikeChange),
+    breakEven: formatMoneyChange(breakEvenUnderlying),
+    breakEvenChange: formatMoneyChange(breakEvenChange),
     usingMarketPrice: position.usingMarketPrice,
     greeks,
     openOrder,

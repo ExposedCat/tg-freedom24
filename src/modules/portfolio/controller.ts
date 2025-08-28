@@ -3,12 +3,12 @@ import { Composer } from 'grammy';
 import { fetchPortfolio } from '../freedom/portfolio.js';
 import type { UserPortfolio } from '../freedom/portfolio.js';
 import type { CustomContext } from '../telegram/context.js';
-import { validateUser } from '../user/utils.js';
+import { buildRefreshMarkup } from '../telegram/markup.js';
 import { findUserById } from '../user/data.js';
+import { validateUser } from '../user/utils.js';
 import { formatMoneyChange, formatPercentageChange } from '../utils/formatting.js';
 import { getPortfolioState, processPosition } from './service.js';
 import { getMarketEmoji, getMarketState, getTimeLeftForCurrentMarketState } from './utils.js';
-import { buildRefreshMarkup } from '../telegram/markup.js';
 
 export const portfolioController = new CommandGroup<CustomContext>();
 export const portfolioCallbacks = new Composer<CustomContext>();
@@ -16,6 +16,7 @@ export const portfolioCallbacks = new Composer<CustomContext>();
 function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof processPosition>, index?: number) {
   const tickerShort = processed.name.replace(/\.US$/, '');
   const strikeChangeOptional = processed.strikeChange === '$0' ? '' : ` (${processed.strikeChange})`;
+  const breakEvenChangeOptional = processed.breakEvenChange === '$0' ? '' : ` (${processed.breakEvenChange})`;
   const openOrderOptional = processed.openOrder ? `\n${processed.openOrder}` : '';
   return {
     ...processed,
@@ -24,6 +25,7 @@ function preparePositionData(ctx: CustomContext, processed: ReturnType<typeof pr
     urlTicker: processed.name,
     tickerShort,
     strikeChangeOptional,
+    breakEvenChangeOptional,
     openOrderOptional,
     priceWarning: processed.usingMarketPrice ? ` ${ctx.i18n.t('portfolio.icon.data.warning')}` : '',
   };

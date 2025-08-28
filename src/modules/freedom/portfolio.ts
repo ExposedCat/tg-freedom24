@@ -14,6 +14,10 @@ export type Option = {
   currentPrice: number;
   baseTickerPrice: number;
   strike: number;
+  type: 'call' | 'put';
+  entryUnitPrice: number;
+  contractSize: number;
+  contractsCount: number;
   usingMarketPrice: boolean;
   delta?: number;
   theta?: number;
@@ -86,7 +90,7 @@ export async function fetchPortfolio(
       for (const order of orderHistory.orders.order) {
         const date = new Date(order.date);
         orderDates.set(order.instr, date);
-        if (order.oper === 3 && order.stat !== 21) {
+        if (order.oper === 3 && order.stat !== 31) {
           const prev = lastOpenSellByInstr.get(order.instr);
           if (!prev || date > prev.date) {
             if (typeof order.p === 'number' && order.p > 0) {
@@ -97,7 +101,7 @@ export async function fetchPortfolio(
       }
     }
 
-    const positions = response.result.ps.pos.map(position => {
+    const positions: Option[] = response.result.ps.pos.map(position => {
       const dbPrice = dbDetails.get(position.i)?.price;
       const baseTickerPrice = dbDetails.get(position.base_contract_code)?.price ?? 0;
       const currentPrice = (dbPrice ?? position.mkt_price * position.face_val_a) * position.q;
@@ -106,6 +110,8 @@ export async function fetchPortfolio(
       const openSell = lastOpenSellByInstr.get(position.i);
       const openOrderPrice = openSell?.price;
       const openOrderTotal = openOrderPrice ? openOrderPrice * position.face_val_a * position.q : undefined;
+      const typeChar = position.i.includes('P') ? 'P' : 'C';
+      const parsedStrike = Number(position.i.split(typeChar).at(-1));
 
       return {
         ticker: position.i,
@@ -115,13 +121,17 @@ export async function fetchPortfolio(
         startPrice: position.price_a * position.face_val_a * position.q,
         currentPrice,
         baseTickerPrice,
-        strike: Number(position.i.split('C').at(-1)),
+        strike: parsedStrike,
+        type: typeChar === 'P' ? 'put' : 'call',
+        entryUnitPrice: position.price_a,
+        contractSize: position.face_val_a,
+        contractsCount: position.q,
         usingMarketPrice,
         delta: dbDetails.get(position.i)?.delta,
         theta: dbDetails.get(position.i)?.theta,
         openOrderPrice,
         openOrderTotal,
-      };
+      } as Option;
     });
 
     if (TradenetWebSocket.isConnected()) {
