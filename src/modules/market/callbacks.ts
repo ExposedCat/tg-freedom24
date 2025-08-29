@@ -9,7 +9,7 @@ export const marketCallbacks = new Composer<CustomContext>();
 marketCallbacks.callbackQuery(/market_refresh:(derived|real)/, async (ctx: CustomContext) => {
   const chatId = ctx.chat!.id;
 
-  const mode = (ctx.commandMatch.match?.at(1) as 'derived' | 'real') ?? 'derived';
+  const mode = (ctx.match?.at(1) as 'derived' | 'real') ?? 'derived';
   const lines = await buildMarketList(ctx.db, chatId, mode);
   if (lines.length === 0) {
     await ctx.answerCallbackQuery();
