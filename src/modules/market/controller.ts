@@ -31,7 +31,7 @@ async function sendMarketList(ctx: CustomContext, mode: 'derived' | 'real' = 'de
       dataWarning: TradenetWebSocket.isConnected() ? '' : ` ${ctx.i18n.t('portfolio.icon.data.warning')}`,
     },
     {
-      reply_markup: buildRefreshMarkup(ctx.i18n.t('portfolio.refresh'), 'market_refresh'),
+      reply_markup: buildRefreshMarkup(ctx.i18n.t('portfolio.refresh'), `market_refresh:${mode}`),
     },
   );
 }
