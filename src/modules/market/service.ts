@@ -1,10 +1,29 @@
 import type { Database } from '../database/types.js';
 import { TradenetWebSocket } from '../freedom/realtime.js';
+import { getMarketState } from '../portfolio/utils.js';
+import { findTickersByNames } from '../tickers/data.js';
 import { formatPercentageChange } from '../utils/formatting.js';
 import { getMarketTickers, setMarketTickers } from './data.js';
-import { findTickersByNames } from '../tickers/data.js';
 
-export async function buildMarketSummary(database: Database, chatId: number): Promise<string | null> {
+type BaselineMode = 'derived' | 'real';
+
+function pickBaseline(
+  ticker: { closePrice?: number; lastPriceOpen?: number; lastPricePost?: number; lastPricePre?: number },
+  mode: BaselineMode,
+): number | undefined {
+  if (mode === 'real') return ticker.closePrice;
+  const state = getMarketState();
+  if (state === 'open') return ticker.lastPricePre;
+  if (state === 'post') return ticker.lastPriceOpen;
+  if (state === 'pre') return ticker.lastPricePost;
+  return ticker.lastPricePost;
+}
+
+export async function buildMarketSummary(
+  database: Database,
+  chatId: number,
+  mode: BaselineMode = 'derived',
+): Promise<string | null> {
   const marketTickers: string[] = await getMarketTickers(database, chatId);
 
   if (marketTickers.length === 0) {
@@ -18,9 +37,9 @@ export async function buildMarketSummary(database: Database, chatId: number): Pr
 
   for (const ticker of tickerDocuments) {
     const lastPrice = ticker.lastPrice;
-    const closePrice = ticker.closePrice;
-    if (typeof lastPrice !== 'number' || typeof closePrice !== 'number' || closePrice <= 0) continue;
-    const percent = ((lastPrice - closePrice) / closePrice) * 100;
+    const baseline = pickBaseline(ticker, mode);
+    if (typeof lastPrice !== 'number' || typeof baseline !== 'number' || baseline <= 0) continue;
+    const percent = ((lastPrice - baseline) / baseline) * 100;
     const direction: TickerChange['direction'] = percent > 0 ? 'up' : percent < 0 ? 'down' : 'flat';
     changes.push({ symbol: ticker.name, percent, direction });
   }
@@ -90,13 +109,23 @@ export async function removeMarketTicker(database: Database, chatId: number, ind
   return { success: true, removed } as const;
 }
 
-export async function buildMarketList(database: Database, chatId: number): Promise<string[]> {
+export async function buildMarketList(
+  database: Database,
+  chatId: number,
+  mode: BaselineMode = 'derived',
+): Promise<string[]> {
   const marketTickers: string[] = await getMarketTickers(database, chatId);
   if (marketTickers.length === 0) return [];
 
   const tickerDocuments = await findTickersByNames(database, marketTickers);
   const priceByTicker = new Map(
-    tickerDocuments.map(ticker => [ticker.name, { lastPrice: ticker.lastPrice, closePrice: ticker.closePrice }]),
+    tickerDocuments.map(ticker => [
+      ticker.name,
+      {
+        lastPrice: ticker.lastPrice,
+        baseline: pickBaseline(ticker, mode),
+      },
+    ]),
   );
 
   type MarketItem = {
@@ -114,13 +143,8 @@ export async function buildMarketList(database: Database, chatId: number): Promi
     let icon = '🟠';
     let percentText = '';
     let percent: number | undefined;
-    if (
-      prices &&
-      typeof prices.lastPrice === 'number' &&
-      typeof prices.closePrice === 'number' &&
-      prices.closePrice > 0
-    ) {
-      percent = ((prices.lastPrice - prices.closePrice) / prices.closePrice) * 100;
+    if (prices && typeof prices.lastPrice === 'number' && typeof prices.baseline === 'number' && prices.baseline > 0) {
+      percent = ((prices.lastPrice - prices.baseline) / prices.baseline) * 100;
       icon = percent > 0 ? '🟢' : percent < 0 ? '🔴' : '🟠';
       percentText = formatPercentageChange(percent, 2);
     }

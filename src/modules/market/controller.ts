@@ -1,14 +1,14 @@
 import { CommandGroup } from '@grammyjs/commands';
-import type { CustomContext } from '../telegram/context.js';
 import { TradenetWebSocket } from '../freedom/realtime.js';
-import { addMarketTickers, buildMarketList, buildMarketSummary, removeMarketTicker } from './service.js';
+import type { CustomContext } from '../telegram/context.js';
 import { buildRefreshMarkup } from '../telegram/markup.js';
+import { addMarketTickers, buildMarketList, buildMarketSummary, removeMarketTicker } from './service.js';
 
 export const marketController = new CommandGroup<CustomContext>();
 
-async function sendMarketSummary(ctx: CustomContext) {
+async function sendMarketSummary(ctx: CustomContext, mode: 'derived' | 'real' = 'derived') {
   if (!ctx.chat) return;
-  const summary = await buildMarketSummary(ctx.db, ctx.chat.id);
+  const summary = await buildMarketSummary(ctx.db, ctx.chat.id, mode);
   if (!summary) {
     await ctx.text('market.list.empty');
     return;
@@ -16,9 +16,9 @@ async function sendMarketSummary(ctx: CustomContext) {
   await ctx.text(summary);
 }
 
-async function sendMarketList(ctx: CustomContext) {
+async function sendMarketList(ctx: CustomContext, mode: 'derived' | 'real' = 'derived') {
   if (!ctx.chat) return;
-  const lines = await buildMarketList(ctx.db, ctx.chat.id);
+  const lines = await buildMarketList(ctx.db, ctx.chat.id, mode);
   if (lines.length === 0) {
     await ctx.text('market.list.empty');
     return;
@@ -43,12 +43,21 @@ async function handleMarketCommand(ctx: CustomContext) {
 
   const raw = typeof ctx.match === 'string' ? ctx.match.trim() : '';
   if (!raw) {
-    await sendMarketSummary(ctx);
+    await sendMarketSummary(ctx, 'derived');
     return;
   }
 
-  if (raw.toLowerCase() === 'list') {
-    await sendMarketList(ctx);
+  const lower = raw.toLowerCase();
+  if (lower === 'list') {
+    await sendMarketList(ctx, 'derived');
+    return;
+  }
+  if (lower === 'real') {
+    await sendMarketSummary(ctx, 'real');
+    return;
+  }
+  if (lower === 'list real' || lower === 'real list') {
+    await sendMarketList(ctx, 'real');
     return;
   }
 
@@ -57,7 +66,7 @@ async function handleMarketCommand(ctx: CustomContext) {
     .map(tickerValue => tickerValue.trim())
     .filter(Boolean);
   if (tickers.length === 0) {
-    await ctx.text('Usage: /market TICKER[,TICKER...] or /market list');
+    await ctx.text('Usage: /market TICKER[,TICKER...] or /market list or /market real or /market list real');
     return;
   }
   const result = await addMarketTickers(ctx.db, ctx.chat.id, tickers);
@@ -97,5 +106,16 @@ marketController.command('ml', '', async ctx => {
   if (!ctx.chat) {
     return;
   }
-  await sendMarketList(ctx);
+  await sendMarketList(ctx, 'derived');
+});
+
+marketController.command('mr', '', async ctx => {
+  await sendMarketSummary(ctx, 'real');
+});
+
+marketController.command('mlr', '', async ctx => {
+  if (!ctx.chat) {
+    return;
+  }
+  await sendMarketList(ctx, 'real');
 });

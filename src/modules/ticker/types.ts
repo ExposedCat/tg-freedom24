@@ -5,4 +5,7 @@ export type Ticker = {
   delta?: number;
   theta?: number;
   closePrice?: number;
+  lastPriceOpen?: number;
+  lastPricePost?: number;
+  lastPricePre?: number;
 };
