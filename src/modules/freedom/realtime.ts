@@ -328,12 +328,6 @@ export class TradenetWebSocket {
     try {
       const state = getMarketState();
 
-      const statePrice: Record<string, number | undefined> = {
-        lastPriceOpen: state === 'open' && price > 0 ? price : undefined,
-        lastPricePost: state === 'post' && price > 0 ? price : undefined,
-        lastPricePre: state === 'pre' && price > 0 ? price : undefined,
-      };
-
       await this.database.tickers.updateOne(
         { name },
         {
@@ -341,7 +335,9 @@ export class TradenetWebSocket {
             name,
             ...(price > 0 && { lastPrice: price }),
             ...(closePrice !== undefined && { closePrice }),
-            ...statePrice,
+            ...(state === 'open' && price > 0 ? { lastPriceOpen: price } : {}),
+            ...(state === 'post' && price > 0 ? { lastPricePost: price } : {}),
+            ...(state === 'pre' && price > 0 ? { lastPricePre: price } : {}),
             lastUpdated: new Date(),
             delta,
             theta,
