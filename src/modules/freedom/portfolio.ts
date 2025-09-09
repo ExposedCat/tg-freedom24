@@ -19,6 +19,7 @@ export type Option = {
   contractSize: number;
   contractsCount: number;
   usingMarketPrice: boolean;
+  isOption: boolean;
   delta?: number;
   theta?: number;
   openOrderPrice?: number;
@@ -103,15 +104,27 @@ export async function fetchPortfolio(
 
     const positions: Option[] = response.result.ps.pos.map(position => {
       const dbPrice = dbDetails.get(position.i)?.price;
-      const baseTickerPrice = dbDetails.get(position.base_contract_code)?.price ?? 0;
+      const marketOrClose =
+        typeof position.mkt_price === 'number' && position.mkt_price > 0
+          ? position.mkt_price
+          : typeof position.close_price === 'number' && position.close_price > 0
+            ? position.close_price
+            : 0;
+      const baseTickerPrice = dbDetails.get(position.base_contract_code)?.price ?? marketOrClose;
       const currentPrice = (dbPrice ?? position.mkt_price * position.face_val_a) * position.q;
       const usingMarketPrice = dbPrice === undefined;
       const startDate = orderDates.get(position.i) || new Date(0);
       const openSell = lastOpenSellByInstr.get(position.i);
       const openOrderPrice = openSell?.price;
       const openOrderTotal = openOrderPrice ? openOrderPrice * position.face_val_a * position.q : undefined;
-      const typeChar = position.i.includes('P') ? 'P' : 'C';
-      const parsedStrike = Number(position.i.split(typeChar).at(-1));
+      const isOption = position.i.startsWith('+');
+      const optionMatch = isOption ? position.i.split('C').at(-1) : null;
+      const optionType: 'call' | 'put' = position.i.includes('P') ? 'put' : 'call';
+      let parsedStrike = 0;
+      if (optionMatch) {
+        const strikeNumber = Number(optionMatch);
+        parsedStrike = Number.isFinite(strikeNumber) ? strikeNumber : 0;
+      }
 
       return {
         ticker: position.i,
@@ -122,11 +135,12 @@ export async function fetchPortfolio(
         currentPrice,
         baseTickerPrice,
         strike: parsedStrike,
-        type: typeChar === 'P' ? 'put' : 'call',
+        type: optionType,
         entryUnitPrice: position.price_a,
         contractSize: position.face_val_a,
         contractsCount: position.q,
         usingMarketPrice,
+        isOption,
         delta: dbDetails.get(position.i)?.delta,
         theta: dbDetails.get(position.i)?.theta,
         openOrderPrice,

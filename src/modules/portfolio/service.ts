@@ -29,10 +29,15 @@ export function processPosition(position: Option): ProcessedPosition {
   const percentage = position.startPrice !== 0 ? (profit / position.startPrice) * 100 : 0;
   const timeLeft = formatTimeLeft(position.startDate, position.endDate);
   const timeFromNow = formatTimeLeft(new Date(), position.endDate);
-  const strikeChange = position.baseTickerPrice - position.strike;
-  const breakEvenUnderlying =
-    position.type === 'put' ? position.strike - position.entryUnitPrice : position.strike + position.entryUnitPrice;
-  const breakEvenChange = position.baseTickerPrice - breakEvenUnderlying;
+  const hasValidStrike = position.isOption && Number.isFinite(position.strike) && position.strike > 0;
+  const strikeValue = hasValidStrike ? position.strike : 0;
+  const strikeChange = position.baseTickerPrice - strikeValue;
+  const breakEvenUnderlyingPerShare = hasValidStrike
+    ? position.type === 'put'
+      ? strikeValue - position.entryUnitPrice
+      : strikeValue + position.entryUnitPrice
+    : 0;
+  const breakEvenChange = hasValidStrike ? position.baseTickerPrice - breakEvenUnderlyingPerShare : 0;
   const greeksParts: string[] = [];
   const formatScaledGreek = (value: number, unit: string): string => {
     let scale = 1;
@@ -70,9 +75,9 @@ export function processPosition(position: Option): ProcessedPosition {
     endDate: position.endDate.toLocaleDateString(),
     timeLeft,
     timeFromNow,
-    strike: formatMoneyChange(position.strike),
+    strike: formatMoneyChange(strikeValue),
     strikeChange: formatMoneyChange(strikeChange),
-    breakEven: formatMoneyChange(breakEvenUnderlying),
+    breakEven: formatMoneyChange(breakEvenUnderlyingPerShare),
     breakEvenChange: formatMoneyChange(breakEvenChange),
     usingMarketPrice: position.usingMarketPrice,
     greeks,
