@@ -69,8 +69,10 @@ export function processTradeHistory(orders: any[]): ProcessedTradeHistory {
         if (buy.date > sell.date) continue;
 
         const tradeQuantity = Math.min(buy.quantity, sell.quantity);
-        const profit = sell.profit || sell.value - buy.value;
-        const percentage = buy.value !== 0 ? (profit / buy.value) * 100 : 0;
+        const allocatedBuyCost = buy.price * tradeQuantity;
+        const allocatedSellRevenue = sell.price * tradeQuantity;
+        const profit = allocatedSellRevenue - allocatedBuyCost;
+        const percentage = allocatedBuyCost !== 0 ? (profit / allocatedBuyCost) * 100 : 0;
 
         trades.push({
           ticker,
@@ -98,7 +100,7 @@ export function processTradeHistory(orders: any[]): ProcessedTradeHistory {
           buyDate: buy.date,
           buyPrice: buy.price,
           quantity: buy.quantity,
-          currentValue: buy.value,
+          currentValue: buy.price * buy.quantity,
         });
       }
     }
@@ -112,7 +114,7 @@ export function processTradeHistory(orders: any[]): ProcessedTradeHistory {
 
 export function calculateTradeStatistics(trades: Trade[]): TradeStatistics {
   const finishedProfit = trades.reduce((sum, trade) => sum + trade.profit, 0);
-  const finishedInvested = trades.reduce((sum, trade) => sum + trade.buyPrice * trade.quantity * 100, 0);
+  const finishedInvested = trades.reduce((sum, trade) => sum + trade.buyPrice * trade.quantity, 0);
   const finishedPercentage = finishedInvested !== 0 ? (finishedProfit / finishedInvested) * 100 : 0;
 
   return {
